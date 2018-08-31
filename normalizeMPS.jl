@@ -15,7 +15,7 @@ function ProductVidalMPS(ProductState,dim)
             for j in 1:Hd
                 vec = zeros(Float64,dim)
                 vec[1] = v[j]
-                Gammai[j] = vec
+                Gammai[j] = vec'
             end
             Gamma[i] = Gammai
         elseif i == N
@@ -47,4 +47,8 @@ function ProductVidalMPS(ProductState,dim)
 end
 
 function VidalMPStoCoefficients(MPS,ProductState)
-    
+    N = length(ProductState)
+    Gamma = MPS.Gamma
+    Lambda = MPS.Lambda
+    a = Gamma
+    for i in 1:N-1
