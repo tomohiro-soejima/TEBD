@@ -7,7 +7,7 @@ function ProductVidalMPS(ProductState,dim)
     N = length(ProductState)
     Hd = length(ProductState[1])
     Gamma = Vector{Array{Array{Float64},1}}(N)
-    Lambda = Vector{Vector{Float64}}(N-1)
+    Lambda = Vector{Array{Float64}}(N-1)
     for i in 1:N
         v = ProductState[i]
         if i == 1
@@ -38,7 +38,8 @@ function ProductVidalMPS(ProductState,dim)
     end
 
     for i in 1:N-1
-        lambda = [1.0,0.0]
+        lambda = zero(Float64, dim,dim)
+        lambda[1][1] = 1
         Lambda[i] = lambda
     end
 
