@@ -35,3 +35,5 @@ function ProductVidalMPS(ProductState,dim)
         for i in 1:N-1
             lambda = [1,0]
             Lambda[i] = [lambda,lambda]
+
+        VidalMPS(Gamma,Lambda)
