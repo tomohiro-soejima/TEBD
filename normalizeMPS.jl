@@ -16,6 +16,7 @@ function ProductVidalMPS(ProductState,dim)
                 vec = zeros(Float64,dim)
                 vec[1] = v[j]
                 Gammai[j] = vec
+            end
             Gamma[i] = Gammai
         elseif i == N
             Gammai = Vector{Vector{Float64}(dim)}(Hd)
@@ -23,6 +24,7 @@ function ProductVidalMPS(ProductState,dim)
                 vec = zeros(Float64,dim)
                 vec[1] = v[j]
                 Gammai[j] = vec
+            end
             Gamma[i] = Gammai
         else
             Gammai = Vector{Array{Float64,2}(dim,dim)}(Hd)
@@ -30,10 +32,14 @@ function ProductVidalMPS(ProductState,dim)
                 vec = zeros(Float64,dim,dim)
                 vec[1,1] = v[j]
                 Gammai[j] = vec
+            end
             Gamma[i] = Gammai
+        end
+    end
 
-        for i in 1:N-1
-            lambda = [1,0]
-            Lambda[i] = [lambda,lambda]
+    for i in 1:N-1
+        lambda = [1,0]
+        Lambda[i] = [lambda,lambda]
+    end
 
-        VidalMPS(Gamma,Lambda)
+    VidalMPS(Gamma,Lambda)
