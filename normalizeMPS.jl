@@ -45,3 +45,6 @@ function ProductVidalMPS(ProductState,dim)
 
     VidalMPS(Gamma,Lambda)
 end
+
+function VidalMPStoCoefficients(MPS,ProductState)
+    
