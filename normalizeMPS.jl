@@ -61,3 +61,13 @@ function OneGateOnMPS(MPS::VidalMPS,U,loc)
     Gamma = U*Gamma
     MPS.Gamma[loc] = Gamma
 end
+
+function TwoGateOnMPS(MPS::VidalMPS,U,loc)
+    if loc == 1
+        TwoGateOnMPSLeftEdge(MPS::VidalMPS,U)
+    elseif loc == length(MPS.Gamma)-1
+        TwoGateOnMPSRightEdge(MPS::VidalMPS,U)
+    else
+        TwoGateOnMPSMiddle(MPS::VidalMPS,U,loc)
+    end
+end
