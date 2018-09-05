@@ -55,3 +55,9 @@ end
     for i in 1:N-1
         a = a*(Lambda[i]*(ProductState[i+1]'Gamma[i+1])
 "
+
+function OneGateOnMPS(MPS::VidalMPS,U,loc)
+    Gamma = MPS.Gamma[loc]
+    Gamma = U*Gamma
+    MPS.Gamma[loc] = Gamma
+end
