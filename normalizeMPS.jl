@@ -7,7 +7,7 @@ function ProductVidalMPS(ProductState,dim)
     N = length(ProductState)
     Hd = length(ProductState[1])
     Gamma = Vector{Array{Array{Float64},1}}(undef,N)
-    Lambda = Vector{Array{Float64}}(undef,N-1)
+    Lambda = Vector{Array{Float64,2}}(undef,N-1)
     for i in 1:N
         v = ProductState[i]
         if i == 1
@@ -47,10 +47,11 @@ function ProductVidalMPS(ProductState,dim)
 end
 
 
-function VidalMPStoCoefficients(MPS,ProductState)
+"function VidalMPStoCoefficients(MPS,ProductState)
     N = length(ProductState)
     Gamma = MPS.Gamma
     Lambda = MPS.Lambda
     a = ProductState[1]'*Gamma[1]
     for i in 1:N-1
         a = a*(Lambda[i]*(ProductState[i+1]'Gamma[i+1])
+"
