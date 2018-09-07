@@ -1,6 +1,8 @@
-mutable struct VidalMPS
-    Gamma::Array
-    Lambda::Array
+using BenchmarkTools
+
+struct VidalMPS{D,d,N}
+    Gamma::Array{Float64,4}(D,D,d,N)
+    Lambda::Array{Float64,3}(D,D,N+1)
 end
 
 function ProductVidalMPS(ProductState,D)
@@ -12,7 +14,7 @@ function ProductVidalMPS(ProductState,D)
         v = ProductState[i]
         if i == 1
             Gammai = Vector{Vector{Float64}}(undef,d)
-            for j in 1:d
+            @inbound for j in 1:d
                 vec = zeros(Float64,dim)
                 vec[1] = v[j]
                 Gammai[j] = vec'
