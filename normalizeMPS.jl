@@ -6,57 +6,13 @@ struct VidalMPS{D,d,N}
 end
 
 function ProductVidalMPS(ProductState,D)
-    N = length(ProductState)
-    d = length(ProductState[1])
-    Gamma = Vector{Array{Array{Float64},1}}(undef,N)
-    Lambda = Vector{Array{Float64,2}}(undef,N-1)
-    for i in 1:N
-        v = ProductState[i]
-        if i == 1
-            Gammai = Vector{Vector{Float64}}(undef,d)
-            @inbound for j in 1:d
-                vec = zeros(Float64,dim)
-                vec[1] = v[j]
-                Gammai[j] = vec'
-            end
-            Gamma[i] = Gammai
-        elseif i == N
-            Gammai = Vector{Vector{Float64}}(undef,d)
-            for j in 1:d
-                vec = zeros(Float64,D)
-                vec[1] = v[j]
-                Gammai[j] = vec
-            end
-            Gamma[i] = Gammai
-        else
-            Gammai = Vector{Array{Float64,2}}(undef,d)
-            for j in 1:d
-                vec = zeros(Float64,D,D)
-                vec[1,1] = v[j]
-                Gammai[j] = vec
-            end
-            Gamma[i] = Gammai
-        end
-    end
-
-    for i in 1:N-1
-        lambda = zero(Float64, D,D)
-        lambda[1][1] = 1
-        Lambda[i] = lambda
-    end
-
+    d, N = size(ProductState)
+    Gamma = zeros(Float64,D,D,d,N)
+    Lambda = zeros(Float64,D,D,N+1)
+    Gamma[1,1,:,:] = ProductState[:,:]
+    Lambda[1,1,:] = ones(Float64,N+1)
     VidalMPS(Gamma,Lambda)
 end
-
-
-"function VidalMPStoCoefficients(MPS,ProductState)
-    N = length(ProductState)
-    Gamma = MPS.Gamma
-    Lambda = MPS.Lambda
-    a = ProductState[1]'*Gamma[1]
-    for i in 1:N-1
-        a = a*(Lambda[i]*(ProductState[i+1]'Gamma[i+1])
-"
 
 function OneGateOnMPS(MPS::VidalMPS,U,loc)
     Gamma = MPS.Gamma[loc]
@@ -65,13 +21,3 @@ function OneGateOnMPS(MPS::VidalMPS,U,loc)
 end
 
 function TwoGateOnMPS(MPS::VidalMPS,U,loc)
-    if loc == 1
-        TwoGateOnMPSLeftEdge(MPS::VidalMPS,U)
-    elseif loc == length(MPS.Gamma)-1
-        TwoGateOnMPSRightEdge(MPS::VidalMPS,U)
-    else
-        TwoGateOnMPSMiddle(MPS::VidalMPS,U,loc)
-    end
-end
-
-function TwoGateOnMPSMiddle(MPS::VidalMPS,U,loc)
