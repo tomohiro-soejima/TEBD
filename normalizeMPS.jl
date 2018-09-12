@@ -64,4 +64,6 @@ function TwoGateOnMPS(MPS::VidalMPS,U,loc)
     for j in 1:D
         if L3[i] != 0
             Gamma2[:,i,:] = GL2[:,i,:]/L3[i]
+        end
+    end
 end
