@@ -21,13 +21,15 @@ function ProductVidalMPS(ProductState,D)
     VidalMPS(Gamma,Lambda)
 end
 
-function OneGateOnMPS(MPS::VidalMPS{D,d,N},U,loc)
+function OneGateOnMPS(MPS::VidalMPS,U,loc)
+    D,D2,d,N = size(MPS.Gamma)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
 end
 
-function OneGateOnMPSCopy(MPS::VidalMPS{D,d,N},U,loc)
+function OneGateOnMPSCopy(MPS::VidalMPS,U,loc)
     #To figure out whether in place multiplication is faster
+    D,D2,d,N = size(MPS.Gamma)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
 end
