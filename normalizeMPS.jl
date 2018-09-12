@@ -3,7 +3,7 @@ using LinearAlgebra
 
 struct VidalMPS
     Gamma::Array{Float64,4}
-    Lambda::Array{Float64,3}
+    Lambda::Array{Float64,2}
 end
 
 #=
@@ -16,7 +16,7 @@ end
 function ProductVidalMPS(ProductState,D)
     d, N = size(ProductState)
     Gamma = zeros(Float64,D,D,d,N)
-    Lambda = zeros(Float64,D,D,N+1)
+    Lambda = zeros(Float64,D,N+1)
     Gamma[1,1,:,:] = ProductState
     Lambda[1,:] = ones(Float64,N+1)
     VidalMPS(Gamma,Lambda)
