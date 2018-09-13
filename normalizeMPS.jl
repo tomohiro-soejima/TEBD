@@ -8,9 +8,9 @@ end
 
 struct NNQuadHamiltonian
     #OneSite[i] is on site term at site i
-    OneSite::Array{Hermitian{Complex{Float64},Array{Complex{Float64},2}},1}
+    OneSite::Array{Complex{Float64},3}
     #TwoSite[i] is two-site term at i and i+1
-    TwoSite::Array{Hermitian{Complex{Float64},Array{Complex{Float64},2}},1}
+    TwoSite::Array{Complex{Float64},3}
 end
 
 struct NNQuadUnitary
@@ -142,25 +142,24 @@ function EvenSiteUpdate(MPS::VidalMPS,U::NNQuadUnitary)
 end
 
 function makeNNQuadUnitary(H::NNQuadHamiltonian,del::Float64)
-    N = size(H.OneSite)[1]
-    d = size(H.OneSite[1])[1]
+    d,d1,N = size(H.OneSite)
     OneSite = zeros(Complex{Float64},d,d,N)
     TwoSite = zeros(Complex{Float64},d^2,d^2,N)
     for i in 1:N
-        OneSite[:,:,i] = exp(-im*del*H.OneSite[i])
+        OneSite[:,:,i] = exp(-im*del*Hermitian(H.OneSite[:,:,i]))
     end
     for j in 1:N-1
-        TwoSite[:,:,j] = exp(-im*del*H.TwoSite[j])
+        TwoSite[:,:,j] = exp(-im*del*Hermitian(H.TwoSite[j]))
     end
     NNQuadUnitary(OneSite,TwoSite)
 end
 
 function makeNNQuadH(H::NNSpinHalfHamiltonian)
-    N = size(H.OneSite)[1]
+    N = size(H.OneSite)[2]
     I = [1 0;0 1]
-    Sx = [0 1;1 0]
-    Sy = [0 -im;im 0]
-    Sz = 1/2*[1 0, 0 -1]
+    Sx = 1/2*[0 1;1 0]
+    Sy = 1/2*[0 -im;im 0]
+    Sz = 1/2*[1 0; 0 -1]
     Ops = [I,Sx,Sy,Sz]
     OneSiteOp = zeros(Complex{Float64},2,2,4)
     for i in 1:4
@@ -169,13 +168,13 @@ function makeNNQuadH(H::NNSpinHalfHamiltonian)
     OneSiteOpVec = PermutedDimsArray(reshape(OneSiteOp,4,4),(2,1))
     SS = zeros(Complex{Float64},2,2,2,2,3,3)
     SS[:,:,:,:,:,:] = [OneSiteOp[i1,i2,m]*OneSiteOp[j1,j2,n]
-                    for i1 in 1:2, j1 in 1:2, i2 in 1:2, j2 in 1:2
-                        m in 2:4, n in 2:4]
+                    for i1 in 1:2, j1 in 1:2, i2 in 1:2, j2 in 1:2,
+                        m in 2:4, n in 2:4 ]
     TwoSiteOpVec = PermutedDimsArray(reshape(SS,16,9),(2,1))
     OneSite = reshape(PermutedDimsArray(transpose(H.OneSite)*OneSiteOpVec,(2,1)),2,2,N)
-    TwoSite2 = reshape(H.TwoSite, 16, N)
+    TwoSite2 = reshape(H.TwoSite, 9, N)
     TwoSite = reshape(PermutedDimsArray(transpose(TwoSite2)*TwoSiteOpVec,(2,1)),4,4,N)
-    NNQuadHamiltonian(OneSite,TwoSite)
+    NNQuadHamiltonian(copy(OneSite),copy(TwoSite))
 end
 
 
