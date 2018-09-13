@@ -6,10 +6,15 @@ struct VidalMPS
     Lambda::Array{Float64,2}
 end
 
-struct NNQuadSpinHamiltonian
+struct NNQuadHamiltonian
     #OneSite[:,:,i] is on site term at site i
     OneSite::Array{Complex{Float64},3}
     #TwoSite[:,:,i] is two-site term at i and i+1
+    TwoSite::Array{Complex{Float64},3}
+end
+
+struct NNSpinHalfHamiltonian
+    OneSite::Array{Complex{Float64},2}
     TwoSite::Array{Complex{Float64},3}
 end
 
