@@ -2,13 +2,13 @@ using BenchmarkTools
 using LinearAlgebra
 
 struct VidalMPS
-    Gamma::Array{Float64,4}
+    Gamma::Array{Complex{Float64},4}
     Lambda::Array{Float64,2}
 end
 
 function ProductVidalMPS(ProductState,D)
     d, N = size(ProductState)
-    Gamma = zeros(Float64,D,D,d,N)
+    Gamma = zeros(Complex{Float64},D,D,d,N)
     Lambda = zeros(Float64,D,N+1)
     Gamma[1,1,:,:] = ProductState
     Lambda[1,:] = ones(Float64,N+1)
@@ -27,6 +27,24 @@ function OneGateOnMPSCopy(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
+end
+
+function OneSiteExpValue(MPS::VidalMPS,U,loc)
+    #not working yet!
+    D,D2,d,N = size(MPS.Gamma)
+    L1 = view(MPS.Lambda,:,loc)
+    L2 = view(MPS.Lambda,:,loc+1)
+    Gamma1 = view(MPS.Gamma,:,:,:,loc)
+    S = zeros(Complex{Float64},D,D,d)
+    for i in 1:d
+        S[:,:,d] = Diagonal(L1)*Gamma1[:,:,i]*Diagonal(L2)
+    end
+    print("S =",S,"\n")
+    K = PermutedDimsArray(reshape(S,D^2,d),(2,1))
+    print("K = ",K,"\n")
+    L = U*K
+    print("L = ",L,"\n")
+    sum(L .* conj.(K))
 end
 
 function TwoGateOnMPS(MPS::VidalMPS,U,loc)
