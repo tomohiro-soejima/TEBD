@@ -45,13 +45,13 @@ function OneSiteExpValue(MPS::VidalMPS,U,loc)
 end
 
 function TwoGateOnMPS(MPS::VidalMPS,U,loc)
-    D,D2,d,N = size(MPS.Gamma)
-    thetaNew = Theta_ij(MPS,U,loc,D,d)
+    thetaNew = Theta_ij(MPS,U,loc)
     F = LinearAlgebra.svd(copy(thetaNew))
-    UpdateMPSafterTwoGate(MPS,F,loc,D,d)
+    UpdateMPSafterTwoGate(MPS,F,loc)
 end
 
-function Theta_ij(MPS::VidalMPS,U,loc,D,d)
+function Theta_ij(MPS::VidalMPS,U,loc)
+    D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
     L2 = view(MPS.Lambda,:,loc+1)
     L3 = view(MPS.Lambda,:,loc+2)
@@ -69,7 +69,8 @@ function Theta_ij(MPS::VidalMPS,U,loc,D,d)
     reshape(PermutedDimsArray(reshape(U*theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
 end
 
-function UpdateMPSafterTwoGate(MPS::VidalMPS,F,loc,D,d)
+function UpdateMPSafterTwoGate(MPS::VidalMPS,F,loc)
+    D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
     L2 = view(MPS.Lambda,:,loc+1)
     L3 = view(MPS.Lambda,:,loc+2)
@@ -89,7 +90,6 @@ function UpdateMPSafterTwoGate(MPS::VidalMPS,F,loc,D,d)
         end
     end
 end
-
 
 
 #test
