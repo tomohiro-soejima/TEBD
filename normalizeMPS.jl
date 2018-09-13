@@ -37,13 +37,10 @@ function OneSiteExpValue(MPS::VidalMPS,U,loc)
     Gamma1 = view(MPS.Gamma,:,:,:,loc)
     S = zeros(Complex{Float64},D,D,d)
     for i in 1:d
-        S[:,:,d] = Diagonal(L1)*Gamma1[:,:,i]*Diagonal(L2)
+        S[:,:,i] = Diagonal(L1)*Gamma1[:,:,i]*Diagonal(L2)
     end
-    print("S =",S,"\n")
     K = PermutedDimsArray(reshape(S,D^2,d),(2,1))
-    print("K = ",K,"\n")
     L = U*K
-    print("L = ",L,"\n")
     sum(L .* conj.(K))
 end
 
