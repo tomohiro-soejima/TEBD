@@ -149,13 +149,13 @@ function makeNNQuadUnitary(H::NNQuadHamiltonian,del::Float64)
         OneSite[:,:,i] = exp(-im*del*Hermitian(H.OneSite[:,:,i]))
     end
     for j in 1:N-1
-        TwoSite[:,:,j] = exp(-im*del*Hermitian(H.TwoSite[j]))
+        TwoSite[:,:,j] = exp(-im*del*Hermitian(H.TwoSite[:,:,j]))
     end
     NNQuadUnitary(OneSite,TwoSite)
 end
 
 function makeNNQuadH(H::NNSpinHalfHamiltonian)
-    N = size(H.OneSite)[2]
+    d, N = size(H.OneSite)
     I = [1 0;0 1]
     Sx = 1/2*[0 1;1 0]
     Sy = 1/2*[0 -im;im 0]
@@ -200,6 +200,16 @@ MPS = ProductVidalMPS(PS,10)
 
 Sz = [1 0; 0 -1]
 SzSz = Diagonal([1/4,-1/4,-1/4,1/4])
-Ha(J,h,N) = NNQuadHamiltonian([Hermitian(h*Sz) for i in 1:N],
-                            [Hermitian(J*SzSz) for i in 1:N-1])
+function Ha(J,h,N)
+    OneSite = zeros(Float64,2,2,N)
+    for i in 1:N
+        OneSite[:,:,i] = h*Sz
+    end
+    TwoSite =zeros(Float64,4,4,N)
+    for i in 1:N-1
+        TwoSite[:,:,i] = J*SzSz
+    end
+    NNQuadHamiltonian(OneSite,TwoSite)
+end
+
 TEBD(MPS,Ha(1,0,10),1,10)
