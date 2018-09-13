@@ -7,15 +7,22 @@ struct VidalMPS
 end
 
 struct NNQuadHamiltonian
+    #OneSite[i] is on site term at site i
+    OneSite::Array{Hermitian{Complex{Float64},Array{Complex{Float64},2}},1}
+    #TwoSite[i] is two-site term at i and i+1
+    TwoSite::Array{Hermitian{Complex{Float64},Array{Complex{Float64},2}},1}
+end
+
+struct NNQuadUnitary
     #OneSite[:,:,i] is on site term at site i
     OneSite::Array{Complex{Float64},3}
-    #TwoSite[:,:,i] is two-site term at i and i+1
+    #TwoSite[i] is two-site term at i and i+1
     TwoSite::Array{Complex{Float64},3}
 end
 
 struct NNSpinHalfHamiltonian
-    OneSite::Array{Complex{Float64},2}
-    TwoSite::Array{Complex{Float64},3}
+    OneSite::Array{Float64,2}
+    TwoSite::Array{Float64,3}
 end
 
 function ProductVidalMPS(ProductState,D)
@@ -69,8 +76,8 @@ function Theta_ij(MPS::VidalMPS,U,loc)
     L3 = view(MPS.Lambda,:,loc+2)
     Gamma1 = view(MPS.Gamma,:,:,:,loc)
     Gamma2 = view(MPS.Gamma,:,:,:,loc+1)
-    S1 = zeros(Float64,d*D,D)
-    S2 = zeros(Float64,D,d*D)
+    S1 = zeros(Complex{Float64},d*D,D)
+    S2 = zeros(Complex{Float64},D,d*D)
     for i in 1:d
         S1[(i-1)*D+1:i*D,:] = Diagonal(L1)*view(Gamma1,:,:,i)*Diagonal(L2)
     end
@@ -103,9 +110,76 @@ function UpdateMPSafterTwoGate(MPS::VidalMPS,F,loc)
     end
 end
 
+function TEBD(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    for i in 1:N
+        OddSiteUpdate(MPS,U)
+        EvenSiteUpdate(MPS,U)
+    end
+end
+
+function OddSiteUpdate(MPS::VidalMPS,U::NNQuadUnitary)
+    D,D2,d,N = size(MPS.Gamma)
+    for loc in 1:2:N-1
+        OneGateOnMPS(MPS,U.OneSite[:,:,loc],loc)
+        TwoGateOnMPS(MPS,U.TwoSite[:,:,loc],loc)
+    end
+    if N%2 == 1
+        OneGateOnMPS(MPS,U.OneSite[:,:,N],N)
+    end
+end
+
+function EvenSiteUpdate(MPS::VidalMPS,U::NNQuadUnitary)
+    D,D2,d,N = size(MPS.Gamma)
+    for loc in 2:2:N-1
+        OneGateOnMPS(MPS,U.OneSite[:,:,loc],loc)
+        TwoGateOnMPS(MPS,U.TwoSite[:,:,loc],loc)
+    end
+    if N%2 == 0
+        OneGateOnMPS(MPS,U.OneSite[:,:,N],N)
+    end
+end
+
+function makeNNQuadUnitary(H::NNQuadHamiltonian,del::Float64)
+    N = size(H.OneSite)[1]
+    d = size(H.OneSite[1])[1]
+    OneSite = zeros(Complex{Float64},d,d,N)
+    TwoSite = zeros(Complex{Float64},d^2,d^2,N)
+    for i in 1:N
+        OneSite[:,:,i] = exp(-im*del*H.OneSite[i])
+    end
+    for j in 1:N-1
+        TwoSite[:,:,j] = exp(-im*del*H.TwoSite[j])
+    end
+    NNQuadUnitary(OneSite,TwoSite)
+end
+
+function makeNNQuadH(H::NNSpinHalfHamiltonian)
+    N = size(H.OneSite)[1]
+    I = [1 0;0 1]
+    Sx = [0 1;1 0]
+    Sy = [0 -im;im 0]
+    Sz = 1/2*[1 0, 0 -1]
+    Ops = [I,Sx,Sy,Sz]
+    OneSiteOp = zeros(Complex{Float64},2,2,4)
+    for i in 1:4
+        OneSiteOp[:,:,i] = Ops[i]
+    end
+    OneSiteOpVec = PermutedDimsArray(reshape(OneSiteOp,4,4),(2,1))
+    SS = zeros(Complex{Float64},2,2,2,2,3,3)
+    SS[:,:,:,:,:,:] = [OneSiteOp[i1,i2,m]*OneSiteOp[j1,j2,n]
+                    for i1 in 1:2, j1 in 1:2, i2 in 1:2, j2 in 1:2
+                        m in 2:4, n in 2:4]
+    TwoSiteOpVec = PermutedDimsArray(reshape(SS,16,9),(2,1))
+    OneSite = reshape(PermutedDimsArray(transpose(H.OneSite)*OneSiteOpVec,(2,1)),2,2,N)
+    TwoSite2 = reshape(H.TwoSite, 16, N)
+    TwoSite = reshape(PermutedDimsArray(transpose(TwoSite2)*TwoSiteOpVec,(2,1)),4,4,N)
+    NNQuadHamiltonian(OneSite,TwoSite)
+end
 
 
-#test
+#=test for Updates
 PS = zeros(Float64,2,4)
 PS[1,:] = ones(Float64,4)
 MPS = ProductVidalMPS(PS,5)
@@ -117,3 +191,16 @@ OneGateOnMPS(MPS,U,2)
 #two site operation
 U2 = [1/sqrt(2) 0 0 1/sqrt(2);0 1 0 0; 0 0 1 0; 1/sqrt(2) 0 0 -1/sqrt(2)]
 TwoGateOnMPS(MPS,U2,3)
+=#
+
+zeros(Complex{Float64},2,2)
+
+PS = zeros(Float64,(2,10))
+PS[1,:] = ones(Float64,10)
+MPS = ProductVidalMPS(PS,10)
+
+Sz = [1 0; 0 -1]
+SzSz = Diagonal([1/4,-1/4,-1/4,1/4])
+Ha(J,h,N) = NNQuadHamiltonian([Hermitian(h*Sz) for i in 1:N],
+                            [Hermitian(J*SzSz) for i in 1:N-1])
+TEBD(MPS,Ha(1,0,10),1,10)
