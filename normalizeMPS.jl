@@ -6,6 +6,13 @@ struct VidalMPS
     Lambda::Array{Float64,2}
 end
 
+struct NNQuadSpinHamiltonian
+    #OneSite[:,:,i] is on site term at site i
+    OneSite::Array{Complex{Float64},3}
+    #TwoSite[:,:,i] is two-site term at i and i+1
+    TwoSite::Array{Complex{Float64},3}
+end
+
 function ProductVidalMPS(ProductState,D)
     d, N = size(ProductState)
     Gamma = zeros(Complex{Float64},D,D,d,N)
@@ -90,6 +97,7 @@ function UpdateMPSafterTwoGate(MPS::VidalMPS,F,loc)
         end
     end
 end
+
 
 
 #test
