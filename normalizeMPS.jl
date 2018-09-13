@@ -46,17 +46,9 @@ end
 
 function TwoGateOnMPS(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
-    tic()
     thetaNew = Theta_ij(MPS,U,loc,D,d)
-    toc()
-
-    tic()
     F = LinearAlgebra.svd(copy(thetaNew))
-    toc()
-
-    tic()
     UpdateMPSafterTwoGate(MPS,F,loc,D,d)
-    toc()
 end
 
 function Theta_ij(MPS::VidalMPS,U,loc,D,d)
