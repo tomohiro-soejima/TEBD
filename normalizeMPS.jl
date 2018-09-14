@@ -63,6 +63,19 @@ function OneSiteExpValue(MPS::VidalMPS,U,loc)
     sum(L .* conj.(K))
 end
 
+function OneSiteExpValueCopy(MPS::VidalMPS,U,loc)
+    #not working yet!
+    D,D2,d,N = size(MPS.Gamma)
+    L1 = view(MPS.Lambda,:,loc)
+    L2 = view(MPS.Lambda,:,loc+1)
+    Gamma1 = view(MPS.Gamma,:,:,:,loc)
+    Gamma1 = Diagonal(L1) * reshape(Gamma1,D,D*d)
+    Gamma1 = Diagonal(L2) * reshape(PermutedDimsArray(reshape(Gamma1,D,D,d),(2,1,3)),D,D*d)
+    K = PermutedDimsArray(reshape(Gamma1,D^2,d),(2,1))
+    L = U*K
+    sum(L .* conj.(K))
+end
+
 function TwoGateOnMPS(MPS::VidalMPS,U,loc)
     thetaNew = Theta_ij(MPS,U,loc)
     F = LinearAlgebra.svd(copy(thetaNew))
