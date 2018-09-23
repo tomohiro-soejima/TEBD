@@ -1,5 +1,4 @@
 module VidalMPSfunctions
-
 using BenchmarkTools
 using LinearAlgebra
 
