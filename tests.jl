@@ -1,5 +1,5 @@
-include("./normalizeMPS.jl")
-using VidalMPSfunctions
+include("./VidalTEBD.jl")
+using VidalTEBD
 
 #=test for Updates
 PS = zeros(Float64,2,4)
