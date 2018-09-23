@@ -1,4 +1,4 @@
-module VidalMPSfunctions
+module VidalTEBD
 using BenchmarkTools
 using LinearAlgebra
 
@@ -26,7 +26,7 @@ struct NNSpinHalfHamiltonian
     TwoSite::Array{Float64,3}
 end
 
-function ProductVidalMPS(ProductState,D)
+function make_productVidalMPS(ProductState,D)
     d, N = size(ProductState)
     Gamma = zeros(Complex{Float64},D,D,d,N)
     Lambda = zeros(Float64,D,N+1)
@@ -35,13 +35,13 @@ function ProductVidalMPS(ProductState,D)
     VidalMPS(Gamma,Lambda)
 end
 
-function OneGateOnMPS(MPS::VidalMPS,U,loc)
+function onegate_onMPS(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
 end
 
-function OneGateOnMPSCopy(MPS::VidalMPS,U,loc)
+function onegate_onMPScopy(MPS::VidalMPS,U,loc)
     #To figure out whether in place multiplication is faster
     #turns out it is not much faster
     D,D2,d,N = size(MPS.Gamma)
@@ -49,7 +49,7 @@ function OneGateOnMPSCopy(MPS::VidalMPS,U,loc)
     R[:,:] = U*R
 end
 
-function OneSiteExpValue(MPS::VidalMPS,U,loc)
+function onesite_expvalue(MPS::VidalMPS,U,loc)
     #not working yet!
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
@@ -64,7 +64,7 @@ function OneSiteExpValue(MPS::VidalMPS,U,loc)
     sum(L .* conj.(K))
 end
 
-function OneSiteExpValueCopy(MPS::VidalMPS,U,loc)
+function onesite_expvaluecopy(MPS::VidalMPS,U,loc)
     #not working yet!
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
@@ -77,13 +77,13 @@ function OneSiteExpValueCopy(MPS::VidalMPS,U,loc)
     sum(L .* conj.(K))
 end
 
-function TwoGateOnMPS(MPS::VidalMPS,U,loc)
-    thetaNew = Theta_ij(MPS,U,loc)
+function twogate_onMPS(MPS::VidalMPS,U,loc)
+    thetaNew = theta_ij(MPS,U,loc)
     F = LinearAlgebra.svd(copy(thetaNew))
-    UpdateMPSafterTwoGate(MPS,F,loc)
+    updateMPSafter_twogate(MPS,F,loc)
 end
 
-function Theta_ij(MPS::VidalMPS,U,loc)
+function theta_ij(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
     L2 = view(MPS.Lambda,:,loc+1)
@@ -102,7 +102,7 @@ function Theta_ij(MPS::VidalMPS,U,loc)
     reshape(PermutedDimsArray(reshape(U*theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
 end
 
-function UpdateMPSafterTwoGate(MPS::VidalMPS,F,loc)
+function updateMPSafter_twogate(MPS::VidalMPS,F,loc)
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
     L2 = view(MPS.Lambda,:,loc+1)
@@ -128,30 +128,30 @@ function TEBD(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
     del = T/N
     U = makeNNQuadUnitary(H,del::Float64)
     for i in 1:N
-        OddSiteUpdate(MPS,U)
-        EvenSiteUpdate(MPS,U)
+        update_oddsite(MPS,U)
+        update_evensite(MPS,U)
     end
 end
 
-function OddSiteUpdate(MPS::VidalMPS,U::NNQuadUnitary)
+function update_oddsite(MPS::VidalMPS,U::NNQuadUnitary)
     D,D2,d,N = size(MPS.Gamma)
     for loc in 1:2:N-1
-        OneGateOnMPS(MPS,U.OneSite[:,:,loc],loc)
-        TwoGateOnMPS(MPS,U.TwoSite[:,:,loc],loc)
+        onegate_onMPS(MPS,U.OneSite[:,:,loc],loc)
+        twogate_onMPS(MPS,U.TwoSite[:,:,loc],loc)
     end
     if N%2 == 1
-        OneGateOnMPS(MPS,U.OneSite[:,:,N],N)
+        onegate_onMPS(MPS,U.OneSite[:,:,N],N)
     end
 end
 
-function EvenSiteUpdate(MPS::VidalMPS,U::NNQuadUnitary)
+function update_evensite(MPS::VidalMPS,U::NNQuadUnitary)
     D,D2,d,N = size(MPS.Gamma)
     for loc in 2:2:N-1
-        OneGateOnMPS(MPS,U.OneSite[:,:,loc],loc)
-        TwoGateOnMPS(MPS,U.TwoSite[:,:,loc],loc)
+        onegate_onMPS(MPS,U.OneSite[:,:,loc],loc)
+        twogate_onMPS(MPS,U.TwoSite[:,:,loc],loc)
     end
     if N%2 == 0
-        OneGateOnMPS(MPS,U.OneSite[:,:,N],N)
+        onegate_onMPS(MPS,U.OneSite[:,:,N],N)
     end
 end
 
