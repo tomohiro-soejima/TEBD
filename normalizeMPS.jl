@@ -1,3 +1,5 @@
+module VidalMPSfunctions
+
 using BenchmarkTools
 using LinearAlgebra
 
@@ -190,6 +192,7 @@ function makeNNQuadH(H::NNSpinHalfHamiltonian)
     NNQuadHamiltonian(copy(OneSite),copy(TwoSite))
 end
 
+end
 
 #=test for Updates
 PS = zeros(Float64,2,4)
