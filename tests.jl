@@ -1,5 +1,5 @@
 include("./VidalTEBD.jl")
-using VidalTEBD
+using .VidalTEBD
 
 #=test for Updates
 PS = zeros(Float64,2,4)
@@ -15,14 +15,6 @@ U2 = [1/sqrt(2) 0 0 1/sqrt(2);0 1 0 0; 0 0 1 0; 1/sqrt(2) 0 0 -1/sqrt(2)]
 TwoGateOnMPS(MPS,U2,3)
 =#
 
-zeros(Complex{Float64},2,2)
-
-PS = zeros(Float64,(2,10))
-PS[1,:] = ones(Float64,10)
-MPS = ProductVidalMPS(PS,10)
-
-Sz = [1 0; 0 -1]
-SzSz = Diagonal([1/4,-1/4,-1/4,1/4])
 function Ha(J,h,N)
     OneSite = zeros(Float64,2,2,N)
     for i in 1:N
@@ -35,4 +27,12 @@ function Ha(J,h,N)
     NNQuadHamiltonian(OneSite,TwoSite)
 end
 
-TEBD(MPS,Ha(1,0,10),1,10)
+zeros(Complex{Float64},2,2)
+PS = zeros(Float64,(2,10))
+PS[1,:] = ones(Float64,10)
+MPS = make_productVidalMPS(PS,10)
+Sz = [1 0; 0 -1]
+SzSz = Diagonal([1/4,-1/4,-1/4,1/4])
+
+@time TEBD(MPS,Ha(1,0,10),1,10)
+@time TEBD(MPS,Ha(1,0,10),1,10)

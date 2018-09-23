@@ -1,6 +1,6 @@
 module VidalTEBD
 
-export VidalMPS, NNSpinHalfHamiltonian, NNQUadHamiltonian, NNQuadUnitary
+export VidalMPS, NNSpinHalfHamiltonian, NNQuadHamiltonian, NNQuadUnitary
 export make_productVidalMPS, onesite_expvalue, TEBD, makeNNQuadH
 
 using BenchmarkTools
