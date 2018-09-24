@@ -264,4 +264,13 @@ function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
     end
 end
 
+function contract(M,loc1,Gamma,loc2)
+    #contract an index
+    size1 = size(M)
+    dim1 = size(size1)
+    size2 = size(Gamma)
+    dim2 = size(size2)
+    M2 = reshape(PermutedDimsArray(M,vcat(collect(1:loc1-1),collect(loc1+1:dim1),loc1)),Int(prod(size1)/size1[loc1]),size1[loc1])
+    Gamma2 = reshape(PermutedDimsArray(M,vcat(loc2,collect(1:loc2-1),collect(loc2+1:dim2),loc2)),size2[loc1],Int(prod(size2)/size2[loc2]))
+    reshape(M2*Gamma2,vcat(size1[1:loc1-1],size1(loc1+1:dim1),size2(1:loc2-1),size2(loc2+1,dim2))
 end
