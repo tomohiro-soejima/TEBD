@@ -7,9 +7,23 @@ using BenchmarkTools
 using LinearAlgebra
 
 struct VidalMPS
+    #MPS in Vidal canonical form
     Gamma::Array{Complex{Float64},4}
     Lambda::Array{Float64,2}
 end
+
+struct OrthogonalMPS
+    #MPS in Left orthogonal and right orthogonal form. The location of orthogonality center is specified.
+    Gamma::Array{Complex{Float64},4}
+    Loc_OrtCenter::Int
+    Lambda::Array{Float64,2}
+end
+
+struct GenericMPS
+    # most generic MPS without any orthogonality condition imposed
+    Gamma::Array{Complex{Float64},4}
+end
+
 
 struct NNQuadHamiltonian
     #OneSite[i] is on site term at site i
@@ -30,6 +44,10 @@ struct NNSpinHalfHamiltonian
     TwoSite::Array{Float64,3}
 end
 
+struct MatrixProductOperator
+    M::Array{Complex{Float64},5}
+end
+
 function make_productVidalMPS(ProductState,D)
     d, N = size(ProductState)
     Gamma = zeros(Complex{Float64},D,D,d,N)
@@ -37,6 +55,10 @@ function make_productVidalMPS(ProductState,D)
     Gamma[1,1,:,:] = ProductState
     Lambda[1,:] = ones(Float64,N+1)
     VidalMPS(Gamma,Lambda)
+end
+
+function make_biggerMPS(MPS::VidalMPS)
+    #enlarge the bond dimension
 end
 
 function onegate_onMPS(MPS::VidalMPS,U,loc)
@@ -211,6 +233,8 @@ function getTEBDexpvalue(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     end
     expvalue
 end
+
+function make_superpositionMPO()
 
 
 end
