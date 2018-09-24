@@ -240,7 +240,9 @@ function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
     D,D',d,N = size(VidalMPS.Gamma)
     D2,D2',d2,d2',N2 =  size(MPO.M)
     Gamma = zeros(Complex{Float64},D*D2,D*D2,d,N)
-    Gamma[:,:,i,1] =
+    for i in d
+        Gamma[:,:,i,1] =
+    end
 end
 
 end
