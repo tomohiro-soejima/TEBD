@@ -57,8 +57,18 @@ function make_productVidalMPS(ProductState,D)
     VidalMPS(Gamma,Lambda)
 end
 
-function make_biggerMPS(MPS::VidalMPS)
+function make_biggerMPS(MPS::VidalMPS,D_new)
     #enlarge the bond dimension
+    #=Maybe it is better to append zeros to original lattice?
+    so that it can modify the original MPS?=#
+    D_old, D_old2, d, N = size(MPS.Gamma)
+    Gamma = MPS.Gamma[:,:,:,:]
+    Lambda = MPS.Lambda[:,:]
+    GammaNew = zeros(Complex{Float64},D_new,D_new,d,N)
+    GammaNew[1:D_old,1:D_old,d,N] = Gamma
+    LambdaNew = zeros(Complex{Float64}, D_new,N)
+    LambdaNew[1:D_old,N] = Lambda
+    VidalMPS(GammaNew,LambdaNew)
 end
 
 function onegate_onMPS(MPS::VidalMPS,U,loc)
