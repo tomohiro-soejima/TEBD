@@ -8,48 +8,40 @@ using LinearAlgebra
 
 struct VidalMPS
     #MPS in Vidal canonical form
-    Gamma::Array{Complex{Float64},4}
-    Lambda::Array{Float64,2}
+    Gamma::Array{Complex{Float64},4} #dim = D,D,d,N
+    Lambda::Array{Float64,2} #dim = D,N
 end
-
 struct OrthogonalMPS
     #MPS in Left orthogonal and right orthogonal form. The location of orthogonality center is specified.
-    Gamma::Array{Complex{Float64},4}
+    Gamma::Array{Complex{Float64},4} #dim = D,D,d,N
     Loc_OrtCenter::Int
-    Lambda::Array{Float64,2}
+    Lambda::Array{Float64,2} #dim = D,N
 end
-
 struct GenericMPS
     # most generic MPS without any orthogonality condition imposed
-    Gamma::Array{Complex{Float64},4}
+    Gamma::Array{Complex{Float64},4} #dim =D,D,d,N
 end
-
-
 struct NNQuadHamiltonian
     #OneSite[i] is on site term at site i
-    OneSite::Array{Complex{Float64},3}
+    OneSite::Array{Complex{Float64},3} #dim = d,d,N
     #TwoSite[i] is two-site term at i and i+1
-    TwoSite::Array{Complex{Float64},3}
+    TwoSite::Array{Complex{Float64},3} #dim = d^2,d^2,N
 end
-
 struct NNQuadUnitary
     #OneSite[:,:,i] is on site term at site i
-    OneSite::Array{Complex{Float64},3}
+    OneSite::Array{Complex{Float64},3} #dim =d,d,N
     #TwoSite[i] is two-site term at i and i+1
-    TwoSite::Array{Complex{Float64},3}
+    TwoSite::Array{Complex{Float64},3} #dim = d^2,d^2,N
 end
-
 struct NNSpinHalfHamiltonian
     OneSite::Array{Float64,2}
     TwoSite::Array{Float64,3}
 end
-
 struct MatrixProductOperator
-    M1::Array{Complex{Float64},1}
-    M::Array{Complex{Float64},5}
-    Mend::Array{Complex{Float64}1}
+    M1::Array{Complex{Float64},1} #dim = D
+    M::Array{Complex{Float64},5} #dim = D,D,d,d,N
+    Mend::Array{Complex{Float64},1} #dim = D
 end
-
 function make_productVidalMPS(ProductState,D)
     d, N = size(ProductState)
     Gamma = zeros(Complex{Float64},D,D,d,N)
@@ -259,5 +251,9 @@ function make_superpositionMPO(U,P)
     MatrixProductOperator(M1,M,Mend)
 end
 
+function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
+    D,D',d,N = size(VidalMPS)
+    D2, size(MPO)
+end
 
 end
