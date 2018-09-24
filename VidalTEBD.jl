@@ -45,7 +45,9 @@ struct NNSpinHalfHamiltonian
 end
 
 struct MatrixProductOperator
+    M1::Array{Complex{Float64},1}
     M::Array{Complex{Float64},5}
+    Mend::Array{Complex{Float64}1}
 end
 
 function make_productVidalMPS(ProductState,D)
@@ -244,7 +246,18 @@ function getTEBDexpvalue(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     expvalue
 end
 
-function make_superpositionMPO()
+function make_superpositionMPO(U,P)
+    d,d2,N = size(U)
+    M = zeros(Complex{Float64},2,2,d,d,N)
+    for i in 1:N
+        M[1,1,:,:,i] = eye(Complex{Float64},d)
+        M[1,2,:,:,i] = P[i]*U[:,:,i]
+        M[2,2,:,:,i] = eye(Complex{Float64},d)
+    end
+    M1 = [1,0]
+    Mend = [0,1]
+    MatrixProductOperator(M1,M,Mend)
+end
 
 
 end
