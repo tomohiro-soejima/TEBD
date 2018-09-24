@@ -1,7 +1,7 @@
 module VidalTEBD
 
 export VidalMPS, NNSpinHalfHamiltonian, NNQuadHamiltonian, NNQuadUnitary
-export make_productVidalMPS, onesite_expvalue, TEBD, makeNNQuadH, getTEBDexpvalue
+export make_productVidalMPS, onesite_expvalue, TEBD!, makeNNQuadH, getTEBDexpvalue!,getTEBDexpvaluecopy!
 
 using BenchmarkTools
 using LinearAlgebra
@@ -76,9 +76,9 @@ function onegate_onMPScopy!(MPS::VidalMPS,U,loc)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
 end
-function onesite_expvalue!(MPS::VidalMPS,U,loc)
+function onesite_expvalue(MPS::VidalMPS,U,loc)
     #not working yet!
-    D,D2,d,N = size(MPS.Gamma)
+    @views D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
     L2 = view(MPS.Lambda,:,loc+1)
     Gamma1 = view(MPS.Gamma,:,:,:,loc)
@@ -90,9 +90,9 @@ function onesite_expvalue!(MPS::VidalMPS,U,loc)
     L = U*K
     sum(L .* conj.(K))
 end
-function onesite_expvaluecopy!(MPS::VidalMPS,U,loc)
+function onesite_expvaluecopy(MPS::VidalMPS,U,loc)
     #not working yet!
-    D,D2,d,N = size(MPS.Gamma)
+    @views D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
     L2 = view(MPS.Lambda,:,loc+1)
     Gamma1 = view(MPS.Gamma,:,:,:,loc)
@@ -105,7 +105,7 @@ end
 function twogate_onMPS!(MPS::VidalMPS,U,loc)
     thetaNew = theta_ij(MPS,U,loc)
     F = LinearAlgebra.svd(copy(thetaNew))
-    updateMPSafter_twogate(MPS,F,loc)
+    updateMPSafter_twogate!(MPS,F,loc)
 end
 function theta_ij(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
@@ -216,14 +216,32 @@ function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
         expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
     end
     for i in 1:N
-        update_oddsite(MPS,U)
-        update_evensite(MPS,U)
+        update_oddsite!(MPS,U)
+        update_evensite!(MPS,U)
         for j in 1:size(H.OneSite)[3]
-            expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+        expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
         end
     end
     expvalue
 end
+
+function getTEBDexpvaluecopy!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
+    for j in 1:size(H.OneSite)[2]
+        expvalue[1,j] = onesite_expvaluecopy(MPS,A[:,:,j],j)
+    end
+    for i in 1:N
+        update_oddsite!(MPS,U)
+        update_evensite!(MPS,U)
+        for j in 1:size(H.OneSite)[3]
+        expvalue[i+1,j] = onesite_expvaluecopy(MPS,A[:,:,j],j)
+        end
+    end
+    expvalue
+end
+
 function make_superpositionMPO(U,P)
     d,d2,N = size(U)
     M = zeros(Complex{Float64},2,2,d,d,N)
@@ -237,11 +255,12 @@ function make_superpositionMPO(U,P)
     MatrixProductOperator(M1,M,Mend)
 end
 function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
-    D,D',d,N = size(VidalMPS.Gamma)
-    D2,D2',d2,d2',N2 =  size(MPO.M)
+    D,Dp,d,N = size(VidalMPS.Gamma)
+    D2,D2p,d2,d2p,N2 =  size(MPO.M)
     Gamma = zeros(Complex{Float64},D*D2,D*D2,d,N)
-    for i in d
-        Gamma[:,:,i,1] =
+    @views Gamma[:,:,:,1] = reshape(MPO.M[:,:,:,:,1],D2^2*d,d)*
+                PermutedDimsArray(reshape(VidalMPS.Gamma[:,:,:,1],D^2,d),(2,1))
+    for i in 2:N-1
     end
 end
 
