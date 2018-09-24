@@ -24,9 +24,9 @@ PS[1,:] = ones(Float64,10)
 PS[:,5] = [1/sqrt(2),1/sqrt(2)]
 MPS = make_productVidalMPS(PS,10)
 
-@time TEBD(MPS,Ha(1,0,10),1,10)
-@time TEBD(MPS,Ha(1,0,10),1,10)
-@time TEBD(MPS,Ha(1,0,10),10*pi,100)
+@time TEBD!(MPS,Ha(1,0,10),1,10)
+@time TEBD!(MPS,Ha(1,0,10),1,10)
+@time TEBD!(MPS,Ha(1,0,10),10*pi,100)
 
 Sz = [0 1;1 0]
 U = zeros(Float64,2,2,10)
@@ -34,7 +34,7 @@ for i in 1:10
     U[:,:,i] = Sz
 end
 
-expvalue = @time getTEBDexpvalue(MPS,Ha(1,0,10),10*pi,1000,U)
+expvalue = @time getTEBDexpvalue!(MPS,Ha(1,0,10),10*pi,1000,U)
 x = 1:1001
 plot(x,real(expvalue))
 savefig("myplot.png")

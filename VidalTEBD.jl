@@ -42,6 +42,7 @@ struct MatrixProductOperator
     M::Array{Complex{Float64},5} #dim = D,D,d,d,N
     Mend::Array{Complex{Float64},1} #dim = D
 end
+
 function make_productVidalMPS(ProductState,D)
     d, N = size(ProductState)
     Gamma = zeros(Complex{Float64},D,D,d,N)
@@ -50,7 +51,6 @@ function make_productVidalMPS(ProductState,D)
     Lambda[1,:] = ones(Float64,N+1)
     VidalMPS(Gamma,Lambda)
 end
-
 function make_biggerMPS(MPS::VidalMPS,D_new)
     #enlarge the bond dimension
     #=Maybe it is better to append zeros to original lattice?
@@ -64,22 +64,19 @@ function make_biggerMPS(MPS::VidalMPS,D_new)
     LambdaNew[1:D_old,N] = Lambda
     VidalMPS(GammaNew,LambdaNew)
 end
-
-function onegate_onMPS(MPS::VidalMPS,U,loc)
+function onegate_onMPS!(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
 end
-
-function onegate_onMPScopy(MPS::VidalMPS,U,loc)
+function onegate_onMPScopy!(MPS::VidalMPS,U,loc)
     #To figure out whether in place multiplication is faster
     #turns out it is not much faster
     D,D2,d,N = size(MPS.Gamma)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
 end
-
-function onesite_expvalue(MPS::VidalMPS,U,loc)
+function onesite_expvalue!(MPS::VidalMPS,U,loc)
     #not working yet!
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
@@ -93,8 +90,7 @@ function onesite_expvalue(MPS::VidalMPS,U,loc)
     L = U*K
     sum(L .* conj.(K))
 end
-
-function onesite_expvaluecopy(MPS::VidalMPS,U,loc)
+function onesite_expvaluecopy!(MPS::VidalMPS,U,loc)
     #not working yet!
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
@@ -106,13 +102,11 @@ function onesite_expvaluecopy(MPS::VidalMPS,U,loc)
     L = U*K
     sum(L .* conj.(K))
 end
-
-function twogate_onMPS(MPS::VidalMPS,U,loc)
+function twogate_onMPS!(MPS::VidalMPS,U,loc)
     thetaNew = theta_ij(MPS,U,loc)
     F = LinearAlgebra.svd(copy(thetaNew))
     updateMPSafter_twogate(MPS,F,loc)
 end
-
 function theta_ij(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
@@ -131,8 +125,7 @@ function theta_ij(MPS::VidalMPS,U,loc)
     theta = reshape(PermutedDimsArray(reshape(S1*S2,D,d,D,d),(2,4,1,3)),d^2,D^2)
     reshape(PermutedDimsArray(reshape(U*theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
 end
-
-function updateMPSafter_twogate(MPS::VidalMPS,F,loc)
+function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
     L2 = view(MPS.Lambda,:,loc+1)
@@ -153,38 +146,34 @@ function updateMPSafter_twogate(MPS::VidalMPS,F,loc)
         end
     end
 end
-
-function TEBD(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
+function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
     del = T/N
     U = makeNNQuadUnitary(H,del::Float64)
     for i in 1:N
-        update_oddsite(MPS,U)
-        update_evensite(MPS,U)
+        update_oddsite!(MPS,U)
+        update_evensite!(MPS,U)
     end
 end
-
-function update_oddsite(MPS::VidalMPS,U::NNQuadUnitary)
+function update_oddsite!(MPS::VidalMPS,U::NNQuadUnitary)
     D,D2,d,N = size(MPS.Gamma)
     for loc in 1:2:N-1
-        onegate_onMPS(MPS,U.OneSite[:,:,loc],loc)
-        twogate_onMPS(MPS,U.TwoSite[:,:,loc],loc)
+        onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
+        twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
     end
     if N%2 == 1
         onegate_onMPS(MPS,U.OneSite[:,:,N],N)
     end
 end
-
-function update_evensite(MPS::VidalMPS,U::NNQuadUnitary)
+function update_evensite!(MPS::VidalMPS,U::NNQuadUnitary)
     D,D2,d,N = size(MPS.Gamma)
     for loc in 2:2:N-1
-        onegate_onMPS(MPS,U.OneSite[:,:,loc],loc)
-        twogate_onMPS(MPS,U.TwoSite[:,:,loc],loc)
+        onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
+        twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
     end
     if N%2 == 0
-        onegate_onMPS(MPS,U.OneSite[:,:,N],N)
+        onegate_onMPS!(MPS,U.OneSite[:,:,N],N)
     end
 end
-
 function makeNNQuadUnitary(H::NNQuadHamiltonian,del::Float64)
     d,d1,N = size(H.OneSite)
     OneSite = zeros(Complex{Float64},d,d,N)
@@ -197,7 +186,6 @@ function makeNNQuadUnitary(H::NNQuadHamiltonian,del::Float64)
     end
     NNQuadUnitary(OneSite,TwoSite)
 end
-
 function makeNNQuadH(H::NNSpinHalfHamiltonian)
     d, N = size(H.OneSite)
     I = [1 0;0 1]
@@ -220,8 +208,7 @@ function makeNNQuadH(H::NNSpinHalfHamiltonian)
     TwoSite = reshape(PermutedDimsArray(transpose(TwoSite2)*TwoSiteOpVec,(2,1)),4,4,N)
     NNQuadHamiltonian(copy(OneSite),copy(TwoSite))
 end
-
-function getTEBDexpvalue(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
+function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     del = T/N
     U = makeNNQuadUnitary(H,del::Float64)
     expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
@@ -237,7 +224,6 @@ function getTEBDexpvalue(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     end
     expvalue
 end
-
 function make_superpositionMPO(U,P)
     d,d2,N = size(U)
     M = zeros(Complex{Float64},2,2,d,d,N)
@@ -250,10 +236,11 @@ function make_superpositionMPO(U,P)
     Mend = [0,1]
     MatrixProductOperator(M1,M,Mend)
 end
-
 function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
-    D,D',d,N = size(VidalMPS)
-    D2, size(MPO)
+    D,D',d,N = size(VidalMPS.Gamma)
+    D2,D2',d2,d2',N2 =  size(MPO.M)
+    Gamma = zeros(Complex{Float64},D*D2,D*D2,d,N)
+    Gamma[:,:,i,1] =
 end
 
 end
