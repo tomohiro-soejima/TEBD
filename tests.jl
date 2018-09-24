@@ -1,5 +1,6 @@
 include("./VidalTEBD.jl")
 using .VidalTEBD
+using LinearAlgebra
 
 #=test for Updates
 PS = zeros(Float64,2,4)
@@ -36,3 +37,4 @@ SzSz = Diagonal([1/4,-1/4,-1/4,1/4])
 
 @time TEBD(MPS,Ha(1,0,10),1,10)
 @time TEBD(MPS,Ha(1,0,10),1,10)
+@btime TEBD(MPS,Ha(1,0,10),1,10)
