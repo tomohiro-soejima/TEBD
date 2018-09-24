@@ -1,7 +1,7 @@
 module VidalTEBD
 
 export VidalMPS, NNSpinHalfHamiltonian, NNQuadHamiltonian, NNQuadUnitary
-export make_productVidalMPS, onesite_expvalue, TEBD!, makeNNQuadH, getTEBDexpvalue!,getTEBDexpvaluecopy!
+export make_productVidalMPS, onesite_expvalue,onesite_expvalue1,onesite_expvalue2, TEBD!, makeNNQuadH, getTEBDexpvalue!,getTEBDexpvaluecopy!
 
 using BenchmarkTools
 using LinearAlgebra
@@ -69,14 +69,10 @@ function onegate_onMPS!(MPS::VidalMPS,U,loc)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
 end
-function onegate_onMPScopy!(MPS::VidalMPS,U,loc)
-    #To figure out whether in place multiplication is faster
-    #turns out it is not much faster
-    D,D2,d,N = size(MPS.Gamma)
-    R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
-    R[:,:] = U*R
+function onsite_expvalue(MPS::VidalMPS,U,loc)
+    onesite_expvalue2(MPS,U,loc)
 end
-function onesite_expvalue(MPS::VidalMPS,U,loc)
+function onesite_expvalue1(MPS::VidalMPS,U,loc)
     #not working yet!
     @views D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
@@ -90,7 +86,7 @@ function onesite_expvalue(MPS::VidalMPS,U,loc)
     L = U*K
     sum(L .* conj.(K))
 end
-function onesite_expvaluecopy(MPS::VidalMPS,U,loc)
+function onesite_expvalue2(MPS::VidalMPS,U,loc)
     #not working yet!
     @views D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
@@ -280,4 +276,8 @@ function contract(M,loc1,Gamma,loc2)
     M2 = reshape(PermutedDimsArray(M,vcat(index1,loc1)),prod(size1[index1]),prod(size1[loc1]))
     Gamma2 = reshape(PermutedDimsArray(M,vcat(loc2,index2)),prod(size2[loc1]),prod(size2[index2]))
     reshape(M2*Gamma2,vcat(index1,index2))
+end
+
+
+#this end is for the module
 end
