@@ -1,7 +1,7 @@
 module VidalTEBD
 
 export VidalMPS, NNSpinHalfHamiltonian, NNQuadHamiltonian, NNQuadUnitary
-export make_productVidalMPS, onesite_expvalue, TEBD, makeNNQuadH
+export make_productVidalMPS, onesite_expvalue, TEBD, makeNNQuadH, getTEBDexpvalue
 
 using BenchmarkTools
 using LinearAlgebra
@@ -194,5 +194,23 @@ function makeNNQuadH(H::NNSpinHalfHamiltonian)
     TwoSite = reshape(PermutedDimsArray(transpose(TwoSite2)*TwoSiteOpVec,(2,1)),4,4,N)
     NNQuadHamiltonian(copy(OneSite),copy(TwoSite))
 end
+
+function getTEBDexpvalue(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
+    for j in 1:size(H.OneSite)[2]
+        expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+    end
+    for i in 1:N
+        update_oddsite(MPS,U)
+        update_evensite(MPS,U)
+        for j in 1:size(H.OneSite)[3]
+            expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+        end
+    end
+    expvalue
+end
+
 
 end
