@@ -254,10 +254,7 @@ function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
     D,Dp,d,N = size(VidalMPS.Gamma)
     D2,D2p,d2,d2p,N2 =  size(MPO.M)
     Gamma = zeros(Complex{Float64},D*D2,D*D2,d,N)
-    @views Gamma[:,:,:,1] = reshape(MPO.M[:,:,:,:,1],D2^2*d,d)*
-                PermutedDimsArray(reshape(VidalMPS.Gamma[:,:,:,1],D^2,d),(2,1))
-    for i in 2:N-1
-    end
+    @views Gamma[:,:,:,1] = 0
 end
 
 function contract(M,loc1,Gamma,loc2)
@@ -266,16 +263,24 @@ function contract(M,loc1,Gamma,loc2)
     loc1,loc2 are arrays of index to be contracted
     Make sure prod(size1[loc1]) = prod(size2[loc2])
     =#
-    size1 = size(M)
-    dim1 = size(size1)
-    size2 = size(Gamma)
-    dim2 = size(size2)
+    size1 = collect(size(M))
+    dim1 = size(size1)[1]
+    size2 = collect(size(Gamma))
+    dim2 = size(size2)[1]
     index1 = filter(p->p∉loc1,collect(1:dim1))
     index2 = filter(p->p∉loc2,collect(1:dim2))
+    if size(loc1)[1] == dim1
+        M2 = reshape(M,1,prod(size1[loc1]))
+    else
+        M2 = reshape(PermutedDimsArray(M,Tuple(vcat(index1,loc1))),prod(size1[index1]),prod(size1[loc1]))
+    end
 
-    M2 = reshape(PermutedDimsArray(M,vcat(index1,loc1)),prod(size1[index1]),prod(size1[loc1]))
-    Gamma2 = reshape(PermutedDimsArray(M,vcat(loc2,index2)),prod(size2[loc1]),prod(size2[index2]))
-    reshape(M2*Gamma2,vcat(index1,index2))
+    if size(loc2)[1] == dim2
+        Gamma2 = reshape(Gamma,prod(size1[loc1]))
+    else
+        Gamma2 = reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc1]),prod(size2[index2]))
+    end
+    reshape(M2*Gamma2,Tuple(vcat(size1[index1],size2[index2])))
 end
 
 
