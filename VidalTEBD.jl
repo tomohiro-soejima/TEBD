@@ -272,6 +272,11 @@ function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
     GenericMPS(Gamma)
 end
 
+function converttoVidal(MPS::GenericMPS)
+    D,D2,d,N = size(MPS.Gamma)
+    
+end
+
 function contract(M,loc1,Gamma,loc2)
     #contract an index
     #=
