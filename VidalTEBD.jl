@@ -255,20 +255,20 @@ function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
     D2,D2p,d2,d2p,N2 =  size(MPO.M)
     Gamma = zeros(Complex{Float64},D*D2,D*D2,d,N)
 
-    @views M1 = contract(MPS.M1,[1],MPO.M[:,:,:,:,1],[1]) #get (D2,d,d)
+    @views M1 = contract(MPO.M1,[1],MPO.M[:,:,:,:,1],[1]) #get (D2,d,d)
     @views G1 = contract(MPS.Lambda[:,1],[1],MPS.Gamma[:,:,:,1],[1]) #get (D,d)
     Gamma[1,:,:,1] = reshape(PermutedDimsArray(contract(M1,[3],G1,[2]),(3,1,2)),D*D2,d)
 
     for i in 2:N-1
-        @views Mi = MPS.M[:,:,:,:,i] #get (D2,D2,d,d)
+        @views Mi = MPO.M[:,:,:,:,i] #get (D2,D2,d,d)
         @views Gi = contract(LinearAlgebra.Diagonal(MPS.Lambda[:,i]),[2], MPS.Gamma[:,:,:,i], [1]) #get (D,D,d)
-        Gamma[:,:,:] = reshape(PermutedDimsArray(contract(Mi,[4],Gi,[3])),(4,1,5,2,3),D*D2,D*D2,d)
+        Gamma[:,:,:,i] = reshape(PermutedDimsArray(contract(Mi,[4],Gi,[3]),(4,1,5,2,3)),D*D2,D*D2,d)
     end
 
-    @views Mend = contract(MPS.Mend,[1],MPO.M[:,:,:,:,1],[1]) #get (D2,d,d)
+    @views Mend = contract(MPO.Mend,[1],MPO.M[:,:,:,:,1],[2]) #get (D2,d,d)
     @views Gend = contract(LinearAlgebra.Diagonal(MPS.Lambda[:,N]),[2],MPS.Gamma[:,:,:,N],[1]) #get (D,D,d)
     @views Gend = contract(Gend,[2],MPS.Lambda[:,N+1],[1]) #get (D,d)
-    Gamma[:,1,:,N] = reshape(PermutedDimsArray(contract(Mned,[3],Gend,[2]),(3,1,2)),D*D2,D)
+    Gamma[:,1,:,N] = reshape(PermutedDimsArray(contract(Mend,[3],Gend,[2]),(3,1,2)),D*D2,d)
     GenericMPS(Gamma)
 end
 
