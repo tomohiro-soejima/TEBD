@@ -2,6 +2,7 @@ module VidalTEBD
 
 export VidalMPS, NNSpinHalfHamiltonian, NNQuadHamiltonian, NNQuadUnitary
 export make_productVidalMPS, onesite_expvalue,onesite_expvalue1,onesite_expvalue2, TEBD!, makeNNQuadH, getTEBDexpvalue!,getTEBDexpvaluecopy!
+export contract
 
 using BenchmarkTools
 using LinearAlgebra
@@ -15,7 +16,6 @@ struct OrthogonalMPS
     #MPS in Left orthogonal and right orthogonal form. The location of orthogonality center is specified.
     Gamma::Array{Complex{Float64},4} #dim = D,D,d,N
     Loc_OrtCenter::Int
-    Lambda::Array{Float64,2} #dim = D,N
 end
 struct GenericMPS
     # most generic MPS without any orthogonality condition imposed
@@ -257,24 +257,64 @@ function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
 
     @views M1 = contract(MPS.M1,[1],MPO.M[:,:,:,:,1],[1]) #get (D2,d,d)
     @views G1 = contract(MPS.Lambda[:,1],[1],MPS.Gamma[:,:,:,1],[1]) #get (D,d)
-    Gamma[1,:,:,1] = reshape(PermutedDimsArray(contract(M1,[3],G1,[2]),(3,1,2))
+    Gamma[1,:,:,1] = reshape(PermutedDimsArray(contract(M1,[3],G1,[2]),(3,1,2)),D*D2,d)
 
     for i in 2:N-1
-        @view Mi = MPS.M[:,:,:,:,i] #get (D2,D2,d,d)
-        @view Gi = contract(LinearAlgebra.Diagonal(MPS.Lambda[:,i]),[2],MPS.Gamma[:,:,:,i],[1]) #get (D,D,d)
+        @views Mi = MPS.M[:,:,:,:,i] #get (D2,D2,d,d)
+        @views Gi = contract(LinearAlgebra.Diagonal(MPS.Lambda[:,i]),[2], MPS.Gamma[:,:,:,i], [1]) #get (D,D,d)
         Gamma[:,:,:] = reshape(PermutedDimsArray(contract(Mi,[4],Gi,[3])),(4,1,5,2,3),D*D2,D*D2,d)
     end
 
     @views Mend = contract(MPS.Mend,[1],MPO.M[:,:,:,:,1],[1]) #get (D2,d,d)
     @views Gend = contract(LinearAlgebra.Diagonal(MPS.Lambda[:,N]),[2],MPS.Gamma[:,:,:,N],[1]) #get (D,D,d)
     @views Gend = contract(Gend,[2],MPS.Lambda[:,N+1],[1]) #get (D,d)
-    Gamma[:,1,:,N] = reshape(PermutedDimsArray(contract(Mned,[3],Gend,[2]),(3,1,2))
+    Gamma[:,1,:,N] = reshape(PermutedDimsArray(contract(Mned,[3],Gend,[2]),(3,1,2)),D*D2,D)
     GenericMPS(Gamma)
 end
 
-function converttoVidal(MPS::GenericMPS)
+function convert_to_Vidal(MPS::GenericMPS)
+    MPS2 = convert_to_orthogonal(MPS)
+    converto_to_Vidal(MPS2)
+end
+
+function convert_to_Vidal(MPS::OrthogonalMPS)
     D,D2,d,N = size(MPS.Gamma)
-    
+    loc = MPS.Loc_OrtCenter
+    GammaNew = zeros(Complex{Float64},D,D,d,N)
+    LambdaNew = zeros(Complex{Float64},D,N)
+    #initialize
+    LambdaNew[1,1] = 1
+    F = svd(Matrix(PermutedDimsArray(MPS.Gamma[1,:,:,1],(2,1)))
+    GammaNew[1,:,:,1] = PermutedDimsArray(F.U,(2,1))
+    LambdaNew[:,2]= F.S
+    GammaNew[:,:,:,2] = contract(F.V,[2],MPS.Gamma[:,:,:,2],[1])
+    for i in 2:N-1
+        F = svd(Matrix(reshape(PermutedDimsArray(MPS.Gamma[:,:,:,i],(1,3,2)),D*d,D)))
+        GammaNew[:,:,:,i] = PermutedDimsArray(reshape(F.S,D,d,D),(1,3,2))
+        LambdaNew[:,i+1] = F.S
+        GammaNew[:,:,:,i+1] = contract(F.V,[2],MPS.Gamma[:,:,:,i],[i])
+    end
+    LambdaNew[1,N+1] = 1
+    VidalMPS(GammaNew,LambdaNew)        
+end
+
+function convert_to_orthogonal(MPS::GenericMPS)
+    #takes an (unnormalized) Generic MPS and returns a normalized VidalMPS
+    D,D2,d,N = size(MPS.Gamma)
+    GammaNew = zeros(Complex{Float64},D,D,d,N)
+    #qr decomposition
+    F = LinearAlgebra.qr(PermutedDimsArray(MPS.Gamma[1,:,:,1],(2,1)))
+    GammaNew[1,:,:,1] = PermutedDimsArray(Matrix(F.Q),(2,1))
+    GammaNew[:,:,:,2] = contract(F.R,[2],MPS.Gamma[:,:,:,2],[1])
+    for i in 2:N-1
+        F = LinearAlgebra.qr(reshape(PermutedDimsArray(GammaNew[:,:,:,i],(1,3,2)),D*d,D))
+        GammaNew[:,:,:,i] = PermutedDimsArray(reshape(Matrix(F.Q),D,d,D),(1,3,2))
+        GammaNew[:,:,:,i+1] = contract(F.R,[2],MPS.Gamma[:,:,:,i+1],[1])
+    end
+
+    A = contract(GammaNew[:,:,:,N],[1,2,3],GammaNew[N],[1,2,3])[1]
+    GammaNew[:,:,:,N] = 1/sqrt(A)*GammaNew[:,:,:,N]
+    OrthogonalMPS(GammaNew,N)
 end
 
 function contract(M,loc1,Gamma,loc2)
@@ -296,9 +336,9 @@ function contract(M,loc1,Gamma,loc2)
     end
 
     if size(loc2)[1] == dim2
-        Gamma2 = reshape(Gamma,prod(size1[loc1]))
+        Gamma2 = reshape(Gamma,prod(size2[loc2]))
     else
-        Gamma2 = reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc1]),prod(size2[index2]))
+        Gamma2 = reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2]))
     end
     reshape(M2*Gamma2,Tuple(vcat(size1[index1],size2[index2])))
 end
