@@ -242,9 +242,9 @@ function make_superpositionMPO(U,P)
     d,d2,N = size(U)
     M = zeros(Complex{Float64},2,2,d,d,N)
     for i in 1:N
-        M[1,1,:,:,i] = eye(Complex{Float64},d)
+        M[1,1,:,:,i] = Matrix{Complex{Float64}}(I,d,d)
         M[1,2,:,:,i] = P[i]*U[:,:,i]
-        M[2,2,:,:,i] = eye(Complex{Float64},d)
+        M[2,2,:,:,i] = Matrix{Complex{Float64}}(I,d,d)
     end
     M1 = [1,0]
     Mend = [0,1]
@@ -284,7 +284,7 @@ function convert_to_Vidal(MPS::OrthogonalMPS)
     LambdaNew = zeros(Complex{Float64},D,N)
     #initialize
     LambdaNew[1,1] = 1
-    F = svd(Matrix(PermutedDimsArray(MPS.Gamma[1,:,:,1],(2,1)))
+    F = svd(Matrix(PermutedDimsArray(MPS.Gamma[1,:,:,1],(2,1))))
     GammaNew[1,:,:,1] = PermutedDimsArray(F.U,(2,1))
     LambdaNew[:,2]= F.S
     GammaNew[:,:,:,2] = contract(F.V,[2],MPS.Gamma[:,:,:,2],[1])
@@ -295,7 +295,7 @@ function convert_to_Vidal(MPS::OrthogonalMPS)
         GammaNew[:,:,:,i+1] = contract(F.V,[2],MPS.Gamma[:,:,:,i],[i])
     end
     LambdaNew[1,N+1] = 1
-    VidalMPS(GammaNew,LambdaNew)        
+    VidalMPS(GammaNew,LambdaNew)
 end
 
 function convert_to_orthogonal(MPS::GenericMPS)
