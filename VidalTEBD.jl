@@ -278,6 +278,7 @@ function convert_to_Vidal(MPS::GenericMPS)
 end
 
 function convert_to_Vidal(MPS::OrthogonalMPS)
+    #need to do it in reverse order!
     D,D2,d,N = size(MPS.Gamma)
     loc = MPS.Loc_OrtCenter
     GammaNew = zeros(Complex{Float64},D,D,d,N)
