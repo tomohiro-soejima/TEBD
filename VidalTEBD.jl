@@ -274,25 +274,27 @@ end
 
 function convert_to_Vidal(MPS::GenericMPS)
     MPS2 = convert_to_orthogonal(MPS)
-    converto_to_Vidal(MPS2)
+    convert_to_Vidal(MPS2)
 end
 
 function convert_to_Vidal(MPS::OrthogonalMPS)
     D,D2,d,N = size(MPS.Gamma)
     loc = MPS.Loc_OrtCenter
     GammaNew = zeros(Complex{Float64},D,D,d,N)
-    LambdaNew = zeros(Complex{Float64},D,N)
+    LambdaNew = zeros(Complex{Float64},D,N+1)
     #initialize
     LambdaNew[1,1] = 1
     F = svd(Matrix(PermutedDimsArray(MPS.Gamma[1,:,:,1],(2,1))))
-    GammaNew[1,:,:,1] = PermutedDimsArray(F.U,(2,1))
-    LambdaNew[:,2]= F.S
-    GammaNew[:,:,:,2] = contract(F.V,[2],MPS.Gamma[:,:,:,2],[1])
+    GammaNew[1,1:size(F.U)[2],:,1] = PermutedDimsArray(F.U,(2,1))
+    LambdaNew[1:size(F.S)[1],2]= F.S
+    GammaNew[1:size(F.Vt)[1],:,:,2] = contract(F.Vt,[2],MPS.Gamma[:,:,:,2],[1])
     for i in 2:N-1
+        println(contract(GammaNew[:,:,:,i],[1,2,3],GammaNew[:,:,:,i],[1,2,3])[1])
         F = svd(Matrix(reshape(PermutedDimsArray(MPS.Gamma[:,:,:,i],(1,3,2)),D*d,D)))
-        GammaNew[:,:,:,i] = PermutedDimsArray(reshape(F.S,D,d,D),(1,3,2))
+        GammaNew[:,:,:,i] = PermutedDimsArray(reshape(F.U,D,d,D),(1,3,2))
+        println(sum(F.S))
         LambdaNew[:,i+1] = F.S
-        GammaNew[:,:,:,i+1] = contract(F.V,[2],MPS.Gamma[:,:,:,i],[i])
+        GammaNew[:,:,:,i+1] = contract(F.Vt,[2],MPS.Gamma[:,:,:,i],[1])
     end
     LambdaNew[1,N+1] = 1
     VidalMPS(GammaNew,LambdaNew)
@@ -304,15 +306,15 @@ function convert_to_orthogonal(MPS::GenericMPS)
     GammaNew = zeros(Complex{Float64},D,D,d,N)
     #qr decomposition
     F = LinearAlgebra.qr(PermutedDimsArray(MPS.Gamma[1,:,:,1],(2,1)))
-    GammaNew[1,:,:,1] = PermutedDimsArray(Matrix(F.Q),(2,1))
-    GammaNew[:,:,:,2] = contract(F.R,[2],MPS.Gamma[:,:,:,2],[1])
+    GammaNew[1,1:size(F.Q)[2],:,1] = PermutedDimsArray(Matrix(F.Q),(2,1))
+    GammaNew[1:size(F.R)[1],:,:,2] = contract(F.R,[2],MPS.Gamma[:,:,:,2],[1])
     for i in 2:N-1
         F = LinearAlgebra.qr(reshape(PermutedDimsArray(GammaNew[:,:,:,i],(1,3,2)),D*d,D))
         GammaNew[:,:,:,i] = PermutedDimsArray(reshape(Matrix(F.Q),D,d,D),(1,3,2))
         GammaNew[:,:,:,i+1] = contract(F.R,[2],MPS.Gamma[:,:,:,i+1],[1])
     end
 
-    A = contract(GammaNew[:,:,:,N],[1,2,3],GammaNew[N],[1,2,3])[1]
+    A = contract(GammaNew[:,:,:,N],[1,2,3],conj(GammaNew[:,:,:,N]),[1,2,3])[1]
     GammaNew[:,:,:,N] = 1/sqrt(A)*GammaNew[:,:,:,N]
     OrthogonalMPS(GammaNew,N)
 end
