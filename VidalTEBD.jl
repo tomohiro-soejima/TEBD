@@ -73,7 +73,7 @@ function onegate_onMPS!(MPS::VidalMPS,U,loc)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
 end
-function onsite_expvalue(MPS::VidalMPS,U,loc)
+function onesite_expvalue(MPS::VidalMPS,U,loc)
     onesite_expvalue2(MPS,U,loc)
 end
 function onesite_expvalue1(MPS::VidalMPS,U,loc)
@@ -285,19 +285,27 @@ function convert_to_Vidal(MPS::LeftOrthogonalMPS)
     #need to do it in reverse order!
     D,D2,d,N = size(MPS.Gamma)
     GammaNew = zeros(Complex{Float64},D,D,d,N)
-    LambdaNew = zeros(Complex{Float64},D,N+1)
+    LambdaNew = zeros(Float64,D,N+1)
 
     LambdaNew[1,N+1] = 1
     F = svd(MPS.Gamma[:,1,:,N])
-    GammaNew[1:size(F.Vt)[1],1,:,N] = F.Vt
-    LambdaNew[1:size(F.S)[1],N] = F.S
-    GammaNew[:,1:size(F.U)[2],:,N-1] = PermutedDimsArray(contract(MPS.Gamma[:,:,:,N-1],[2],F.U,[1]),(1,3,2))
+    GammaNew[1:minimum([d,D]),1,:,N] = F.Vt
+    LambdaNew[1:minimum([d,D]),N] = F.S
+    GammaNew[:,1:minimum([d,D]),:,N-1] = PermutedDimsArray(contract(MPS.Gamma[:,:,:,N-1],[2],F.U*Diagonal(F.S),[1]),(1,3,2))
 
     for i in reverse(2:N-1)
         F = svd(Matrix(reshape(GammaNew[:,:,:,i],D,D*d)))
-        GammaNew[:,:,:,i] = reshape(F.Vt,D,D,d)*d
-        LambdaNew[:,i] = F.S/d
-        GammaNew[:,:,:,i-1] = PermutedDimsArray(contract(MPS.Gamma[:,:,:,i-1],[2],F.U,[1]),(1,3,2))
+        LambdaNew[:,i] = F.S
+        LambdaInv = zeros(Float64,D)
+        for j in 1:D
+            if LambdaNew[j,i] > 10^-13
+                LambdaInv[j] = 1/LambdaNew[j,i+1]
+            else
+                LambdaInv[j] = 0
+            end
+        end
+        GammaNew[:,:,:,i] = PermutedDimsArray(contract(reshape(F.Vt,D,D,d),[2],Diagonal(LambdaInv),[1]),(1,3,2))
+        GammaNew[:,:,:,i-1] = PermutedDimsArray(contract(MPS.Gamma[:,:,:,i-1],[2],F.U*Diagonal(F.S),[1]),(1,3,2))
     end
     LambdaNew[1,1] = 1
     VidalMPS(GammaNew,LambdaNew)
