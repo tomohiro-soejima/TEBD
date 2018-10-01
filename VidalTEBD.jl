@@ -91,7 +91,6 @@ function onesite_expvalue1(MPS::VidalMPS,U,loc)
     sum(L .* conj.(K))
 end
 function onesite_expvalue2(MPS::VidalMPS,U,loc)
-    #not working yet!
     @views D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
     L2 = view(MPS.Lambda,:,loc+1)
@@ -209,34 +208,18 @@ function makeNNQuadH(H::NNSpinHalfHamiltonian)
     NNQuadHamiltonian(copy(OneSite),copy(TwoSite))
 end
 function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
+    d,d2,N_site = size(H.OneSite)
     del = T/N
     U = makeNNQuadUnitary(H,del::Float64)
     expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
-    for j in 1:size(H.OneSite)[2]
+    for j in 1:N_site
         expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
     end
     for i in 1:N
         update_oddsite!(MPS,U)
         update_evensite!(MPS,U)
-        for j in 1:size(H.OneSite)[3]
+        for j in 1:N_site
         expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
-        end
-    end
-    expvalue
-end
-
-function getTEBDexpvaluecopy!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
-    del = T/N
-    U = makeNNQuadUnitary(H,del::Float64)
-    expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
-    for j in 1:size(H.OneSite)[2]
-        expvalue[1,j] = onesite_expvaluecopy(MPS,A[:,:,j],j)
-    end
-    for i in 1:N
-        update_oddsite!(MPS,U)
-        update_evensite!(MPS,U)
-        for j in 1:size(H.OneSite)[3]
-        expvalue[i+1,j] = onesite_expvaluecopy(MPS,A[:,:,j],j)
         end
     end
     expvalue
