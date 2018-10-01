@@ -17,6 +17,10 @@ struct OrthogonalMPS
     Gamma::Array{Complex{Float64},4} #dim = D,D,d,N
     Loc_OrtCenter::Int
 end
+struct LeftOrthogonalMPS
+    #MPS in Left orthogonal
+    Gamma::Array{Complex{Float64},4} #dim = D,D,d,N
+end
 struct GenericMPS
     # most generic MPS without any orthogonality condition imposed
     Gamma::Array{Complex{Float64},4} #dim =D,D,d,N
@@ -273,35 +277,33 @@ function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
 end
 
 function convert_to_Vidal(MPS::GenericMPS)
-    MPS2 = convert_to_orthogonal(MPS)
+    MPS2 = convert_to_leftorthogonal(MPS)
     convert_to_Vidal(MPS2)
 end
 
-function convert_to_Vidal(MPS::OrthogonalMPS)
+function convert_to_Vidal(MPS::LeftOrthogonalMPS)
     #need to do it in reverse order!
     D,D2,d,N = size(MPS.Gamma)
-    loc = MPS.Loc_OrtCenter
     GammaNew = zeros(Complex{Float64},D,D,d,N)
     LambdaNew = zeros(Complex{Float64},D,N+1)
-    #initialize
-    LambdaNew[1,1] = 1
-    F = svd(Matrix(PermutedDimsArray(MPS.Gamma[1,:,:,1],(2,1))))
-    GammaNew[1,1:size(F.U)[2],:,1] = PermutedDimsArray(F.U,(2,1))
-    LambdaNew[1:size(F.S)[1],2]= F.S
-    GammaNew[1:size(F.Vt)[1],:,:,2] = contract(F.Vt,[2],MPS.Gamma[:,:,:,2],[1])
-    for i in 2:N-1
-        println(contract(GammaNew[:,:,:,i],[1,2,3],GammaNew[:,:,:,i],[1,2,3])[1])
-        F = svd(Matrix(reshape(PermutedDimsArray(MPS.Gamma[:,:,:,i],(1,3,2)),D*d,D)))
-        GammaNew[:,:,:,i] = PermutedDimsArray(reshape(F.U,D,d,D),(1,3,2))
-        println(sum(F.S))
-        LambdaNew[:,i+1] = F.S
-        GammaNew[:,:,:,i+1] = contract(F.Vt,[2],MPS.Gamma[:,:,:,i],[1])
-    end
+
     LambdaNew[1,N+1] = 1
+    F = svd(MPS.Gamma[:,1,:,N])
+    GammaNew[1:size(F.Vt)[1],1,:,N] = F.Vt
+    LambdaNew[1:size(F.S)[1],N] = F.S
+    GammaNew[:,1:size(F.U)[2],:,N-1] = PermutedDimsArray(contract(MPS.Gamma[:,:,:,N-1],[2],F.U,[1]),(1,3,2))
+
+    for i in reverse(2:N-1)
+        F = svd(Matrix(reshape(GammaNew[:,:,:,i],D,D*d)))
+        GammaNew[:,:,:,i] = reshape(F.Vt,D,D,d)*d
+        LambdaNew[:,i] = F.S/d
+        GammaNew[:,:,:,i-1] = PermutedDimsArray(contract(MPS.Gamma[:,:,:,i-1],[2],F.U,[1]),(1,3,2))
+    end
+    LambdaNew[1,1] = 1
     VidalMPS(GammaNew,LambdaNew)
 end
 
-function convert_to_orthogonal(MPS::GenericMPS)
+function convert_to_leftorthogonal(MPS::GenericMPS)
     #takes an (unnormalized) Generic MPS and returns a normalized VidalMPS
     D,D2,d,N = size(MPS.Gamma)
     GammaNew = zeros(Complex{Float64},D,D,d,N)
@@ -317,7 +319,8 @@ function convert_to_orthogonal(MPS::GenericMPS)
 
     A = contract(GammaNew[:,:,:,N],[1,2,3],conj(GammaNew[:,:,:,N]),[1,2,3])[1]
     GammaNew[:,:,:,N] = 1/sqrt(A)*GammaNew[:,:,:,N]
-    OrthogonalMPS(GammaNew,N)
+    B = contract(GammaNew[:,:,:,N],[1,2,3],conj(GammaNew[:,:,:,N]),[1,2,3])[1]
+    LeftOrthogonalMPS(GammaNew)
 end
 
 function contract(M,loc1,Gamma,loc2)
