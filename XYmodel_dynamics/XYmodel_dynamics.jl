@@ -1,7 +1,8 @@
+module dynamics
+
 include("../VidalTEBD.jl")
 using .VidalTEBD
 using LinearAlgebra
-
 
 function xymodel_dynamics(N,x0,sigma,D,T,Nt,h_list,alpha,O)
     #implements the dynamics of a Hamiltonian H = h_i S_i + (Sx_i Sx_i+1 + Sy_i Sy_i+1 + alpha Sz_i Sz_i+1)
@@ -54,4 +55,7 @@ end
 function excited_state_dynamics(N,x0,sigma, D,T,Nt,H,O)
     MPS = create_excited_state(N,x0,sigma,D)
     VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
+end
+
+#this end is for module
 end
