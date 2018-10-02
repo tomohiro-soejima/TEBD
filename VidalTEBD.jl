@@ -142,7 +142,7 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
             L1_inv[i] = 0
         end
     end
-    GL3 = contract(L1_inv,[2],GL2,[1])
+    GL3 = contract(Diagonal(L1_inv),[2],GL2,[1])
 
     @views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
     L3_inv = zero(L3)
@@ -153,7 +153,7 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
             L3_inv[i] = 0
         end
     end
-    Gamma2[:,:,:]= PermutedDimsArray(contract(GL3,[2],L3_inv[1]),(1,3,2))
+    Gamma2[:,:,:]= PermutedDimsArray(contract(GL3,[2],Diagonal(L3_inv),[1]),(1,3,2))
 end
 function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
     del = T/N
