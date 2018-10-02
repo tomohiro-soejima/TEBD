@@ -39,3 +39,14 @@ function xymodel_Hamiltonian(h_list,alpha)
     H = VidalTEBD.NNSpinHalfHamiltonian(OneSite,TwoSite)
     VidalTEBD.makeNNQuadH(H)
 end
+
+function ising_Hamiltonian(h_list,J_list)
+    #create Hamiltonian Hamiltonian H = h_i S_i + J_i Sz_i Sz_i+1
+    N = size(h_list)[1]
+    OneSite = zeros(Float64,4,N)
+    OneSite[4,:] = h_list #h_i at each site
+    TwoSite = zeros(Float64,3,3,N)
+    TwoSite[3,3,1:N-1] = J_list #SzSz
+    H = VidalTEBD.NNSpinHalfHamiltonian(OneSite,TwoSite)
+    VidalTEBD.makeNNQuadH(H)
+end
