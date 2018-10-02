@@ -133,17 +133,27 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
     Gamma2 = view(MPS.Gamma,:,:,:,loc+1)
     @views GL1 = PermutedDimsArray(reshape(F.U[:,1:D],D,d,D),(1,3,2))
     @views GL2 = reshape(F.Vt[1:D,:],D,D,d)
+
+    L1_inv = zero(L1)
     for i in 1:D
-        if L1[i] != 0
-            Gamma1[i,:,:] = GL1[i,:,:]/L1[i]
+        if L1[i] > 10^-13
+            L1_inv[i] = 1/L1[i]
+        else
+            L1_inv[i] = 0
         end
     end
+    GL3 = contract(L1_inv,[2],GL2,[1])
+
     @views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
-    for j in 1:D
-        if L3[j] != 0
-            Gamma2[:,j,:] = GL2[:,j,:]/L3[j]
+    L3_inv = zero(L3)
+    for i in 1:D
+        if L3[i] > 10^-13
+            L3_inv[i] = 1/L3[i]
+        else
+            L3_inv[i] = 0
         end
     end
+    Gamma2[:,:,:]= PermutedDimsArray(contract(GL3,[2],L3_inv[1]),(1,3,2))
 end
 function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
     del = T/N
