@@ -138,8 +138,6 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
     for i in 1:D
         if L1[i] > 10^-13
             L1_inv[i] = 1/L1[i]
-        else
-            L1_inv[i] = 0
         end
     end
     GL3 = contract(Diagonal(L1_inv),[2],GL2,[1])
@@ -149,8 +147,6 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
     for i in 1:D
         if L3[i] > 10^-13
             L3_inv[i] = 1/L3[i]
-        else
-            L3_inv[i] = 0
         end
     end
     Gamma2[:,:,:]= PermutedDimsArray(contract(GL3,[2],Diagonal(L3_inv),[1]),(1,3,2))
