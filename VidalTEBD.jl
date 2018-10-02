@@ -160,7 +160,7 @@ function update_oddsite!(MPS::VidalMPS,U::NNQuadUnitary)
         twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
     end
     if N%2 == 1
-        onegate_onMPS(MPS,U.OneSite[:,:,N],N)
+        onegate_onMPS!(MPS,U.OneSite[:,:,N],N)
     end
 end
 function update_evensite!(MPS::VidalMPS,U::NNQuadUnitary)
