@@ -142,6 +142,14 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
     end
     GL3 = contract(Diagonal(L1_inv),[2],GL2,[1])
 
+    S = zeros(Float64,D)
+    for i in 1:D
+        if F.S[i] > 10^-6
+            S[i] = F.S[i]
+        else
+            S[i] = 10^-6
+        end
+    end
     @views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
     L3_inv = zero(L3)
     for i in 1:D
