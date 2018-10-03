@@ -4,14 +4,14 @@ using Plots
 using Printf
 
 #initialize
-N = 10
-x0 = 5
-sigma = 2
+N = 20
+x0 = 9
+sigma = 1
 D = 10
-T = 2*pi
-Nt = 100
+T = 0.1*pi
+Nt = 10
 h_list = zeros(Float64,N)
-alpha = 1
+a = 1
 
 #define which variables to measure
 Ob = -1/2*[1 0;0 -1] + 1/2*[1 0;0 1]
@@ -20,10 +20,10 @@ for i in 1:N
     O[:,:,i] = Ob
 end
 
-expvalues = @time dynamics.xymodel_dynamics(N,x0,sigma,D,T,Nt,h_list,alpha,O)
+expvalues = @time dynamics.xymodel_dynamics(N,x0,sigma,D,T,Nt,h_list,a,O)
 x = 1:(Nt+1)
 plot(x,real(expvalues))
-savefig("xyplot_gaussian.png")#
+savefig("xyplot_gaussian8.png")#
 
 function plot_series(x,data,filename,title_name)
     u = maximum(data)
@@ -38,7 +38,7 @@ function plot_series(x,data,filename,title_name)
     end
 end
 
-filename = "xyplot_gaussian"
+filename = "xyplot_gaussian8"
 x = 1:N
 plot_series(x,real(expvalues),filename,"xymodel plot")
 #=
