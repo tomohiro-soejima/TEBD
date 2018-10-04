@@ -361,7 +361,7 @@ function contract(M,loc1,Gamma,loc2)
 end
 
 function normalization_test(MPS::VidalMPS,index,side)
-    D,D1,d, N  = size(MPS)
+    D,D1,d, N  = size(MPS.Gamma)
     dummy = 0
     if side == "left"
         dummy = 0
