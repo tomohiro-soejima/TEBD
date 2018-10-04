@@ -142,7 +142,15 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
     end
     GL3 = contract(Diagonal(L1_inv),[2],GL2,[1])
 
-    @views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
+    S = zeros(Float64,D)
+    for i in 1:D
+        if F.S[i] > 10^-6
+            S[i] = F.S[i]
+        else
+            S[i] = 10^-6
+        end
+    end
+    @views L2[:] = S[:]/sqrt(sum(S[:].^2))
     L3_inv = zero(L3)
     for i in 1:D
         if L3[i] > 10^-13
@@ -220,12 +228,18 @@ function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
     for j in 1:N_site
         expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+        if real(expvalue[1,j]) > 1
+            println("expvalue at site $(j) at time step 1 is $(expvalue[1,j])",)
+        end
     end
     for i in 1:N
         update_oddsite!(MPS,U)
         update_evensite!(MPS,U)
         for j in 1:N_site
-        expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+            expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+            if real(expvalue[i+1,j]) > 1
+                println("expvalue at site $(j) at time step $(i+1) is $(expvalue[i+1,j])",)
+            end
         end
     end
     expvalue
@@ -345,6 +359,33 @@ function contract(M,loc1,Gamma,loc2)
     end
     reshape(M2*Gamma2,Tuple(vcat(size1[index1],size2[index2])))
 end
+
+function normalization_test(MPS::VidalMPS,index,side)
+    D,D1,d, N  = size(MPS)
+    dummy = 0
+    if side == "left"
+        dummy = 0
+    elseif side == "right"
+        dummy = 1
+    else
+        println("say left or right")
+    end
+
+    if index == 1
+        a = contract(MPS.Gamma[1,:,:,1],[2],MPS.Gamma[1,:,:,1],[2])
+        @views println(contract(MPS.Gamma[1,:,:,1],[2],MPS.Gamma[1,:,:,1],[2]))
+    elseif index == N
+        a = contract(MPS.Gamma[:,1,:,N],[2],MPS.Gamma[:,1,:,N],[2])
+        @views println(contract(MPS.Gamma[:,1,:,N],[2],MPS.Gamma[:,1,:,N],[2]))
+    else
+        G = contract(MPS.Gamma[:,:,:,loc],[dummy+1],Diagonal(MPS.Lambda[:,N+dummy]),[2-dummy])
+        a = contract(G,[2,3],G[2,3])
+        println(contract(G,[2,3],G[2,3]))
+    end
+    a
+end
+
+
 
 
 #this end is for the module
