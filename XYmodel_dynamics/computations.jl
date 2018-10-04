@@ -20,7 +20,7 @@ for i in 1:N
     O[:,:,i] = Ob
 end
 
-H = dynamics.xymodel_Hamiltonian(h_list,alpha)
+H = dynamics.xymodel_Hamiltonian(h_list,a)
 MPS = dynamics.create_excited_state(N,x0,sigma,D)
 
 expvalues = @time dynamics.VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)

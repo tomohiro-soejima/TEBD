@@ -11,7 +11,7 @@ function xymodel_dynamics(N,x0,sigma,D,T,Nt,h_list,alpha,O)
     VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
 end
 
-function xymodel_Hamiltonian(h_list,alpha)
+function xymodel_Hamiltonian(h_list,a)
     #create Hamiltonian Hamiltonian H = h_i S_i + (Sx_i Sx_i+1 + Sy_i Sy_i+1 + alpha Sz_i Sz_i+1)
     N = size(h_list)[1]
     OneSite = zeros(Float64,4,N)
@@ -19,7 +19,7 @@ function xymodel_Hamiltonian(h_list,alpha)
     TwoSite = zeros(Float64,3,3,N)
     TwoSite[1,1,1:N-1] = ones(Float64,N-1) #SxSx
     TwoSite[2,2,1:N-1] = ones(Float64,N-1) #SySy
-    TwoSite[3,3,1:N-1] = alpha.*ones(Float64,N-1) #SzSz
+    TwoSite[3,3,1:N-1] = a .* ones(Float64,N-1) #SzSz
     H = VidalTEBD.NNSpinHalfHamiltonian(OneSite,TwoSite)
     VidalTEBD.makeNNQuadH(H)
 end
