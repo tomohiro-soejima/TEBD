@@ -7,7 +7,7 @@ using Printf
 N = 21
 x0 = 11
 sigma = 2
-D = 10
+D = 2
 T = 0.1*pi
 Nt = 5
 h_list = zeros(Float64,N)

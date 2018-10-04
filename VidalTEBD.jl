@@ -378,9 +378,9 @@ function normalization_test(MPS::VidalMPS,index,side)
         a = contract(MPS.Gamma[:,1,:,N],[2],MPS.Gamma[:,1,:,N],[2])
         @views println(contract(MPS.Gamma[:,1,:,N],[2],MPS.Gamma[:,1,:,N],[2]))
     else
-        G = contract(MPS.Gamma[:,:,:,loc],[dummy+1],Diagonal(MPS.Lambda[:,N+dummy]),[2-dummy])
-        a = contract(G,[2,3],G[2,3])
-        println(contract(G,[2,3],G[2,3]))
+        G = contract(MPS.Gamma[:,:,:,index],[dummy+1],Diagonal(MPS.Lambda[:,N+dummy]),[2-dummy])
+        a = contract(G,[2,3],G,[2,3])
+        println(contract(G,[2,3],G,[2,3]))
     end
     a
 end
