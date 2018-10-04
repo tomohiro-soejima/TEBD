@@ -11,7 +11,7 @@ D = 10
 T = 0.1*pi
 Nt = 5
 h_list = zeros(Float64,N)
-alpha = 1
+a = 1
 
 #define which variables to measure
 Ob = -1/2*[1 0;0 -1] + 1/2*[1 0;0 1]

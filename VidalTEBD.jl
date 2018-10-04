@@ -360,6 +360,33 @@ function contract(M,loc1,Gamma,loc2)
     reshape(M2*Gamma2,Tuple(vcat(size1[index1],size2[index2])))
 end
 
+function normalization_test(MPS::VidalMPS,index,side)
+    D,D1,d, N  = size(MPS)
+    dummy = 0
+    if side == "left"
+        dummy = 0
+    elseif side == "right"
+        dummy = 1
+    else
+        println("say left or right")
+    end
+
+    if index == 1
+        a = contract(MPS.Gamma[1,:,:,1],[2],MPS.Gamma[1,:,:,1],[2])
+        @views println(contract(MPS.Gamma[1,:,:,1],[2],MPS.Gamma[1,:,:,1],[2]))
+    elseif index == N
+        a = contract(MPS.Gamma[:,1,:,N],[2],MPS.Gamma[:,1,:,N],[2])
+        @views println(contract(MPS.Gamma[:,1,:,N],[2],MPS.Gamma[:,1,:,N],[2]))
+    else
+        G = contract(MPS.Gamma[:,:,:,loc],[dummy+1],Diagonal(MPS.Lambda[:,N+dummy]),[2-dummy])
+        a = contract(G,[2,3],G[2,3])
+        println(contract(G,[2,3],G[2,3]))
+    end
+    a
+end
+
+
+
 
 #this end is for the module
 end

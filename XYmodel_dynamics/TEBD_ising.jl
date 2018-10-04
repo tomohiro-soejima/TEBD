@@ -1,16 +1,17 @@
 include("./XYmodel_dynamics.jl")
 using .dynamics
 using Plots
-
+using Printf
 
 #initialize
-N = 20
+N = 10
 x0 = N >> 1
 sigma = 2
 D = 10
 J = 1
 T = 0.5*pi
-Nt = 100
+Nt = 10
+filename = "isingplot_gaussian" * @sprintf("_%03d",N)
 
 MPS = dynamics.create_excited_state(N,x0,sigma,D)
 H = dynamics.ising_Hamiltonian(zeros(Float64,N),J .* ones(Float64,N-1))
@@ -24,7 +25,7 @@ end
 expvalues = @time dynamics.VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
 x = 1:(Nt+1)
 plot(x,real(expvalues))
-savefig("isingplot_gaussian_100.png")#
+savefig(filename)#
 
 function plot_series(x,data,filename,title_name)
     u = maximum(data)
@@ -39,6 +40,5 @@ function plot_series(x,data,filename,title_name)
     end
 end
 
-filename = "isingplot_gaussian_100"
 x = 1:N
-plot_series(x,real(expvalues),filename,"Ising plot")
+@time plot_series(x,real(expvalues),filename,"Ising plot")
