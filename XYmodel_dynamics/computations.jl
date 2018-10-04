@@ -4,12 +4,12 @@ using Plots
 using Printf
 
 #initialize
-N = 10
-x0 = 5
+N = 21
+x0 = 11
 sigma = 2
 D = 10
-T = 2*pi
-Nt = 100
+T = 0.1*pi
+Nt = 5
 h_list = zeros(Float64,N)
 alpha = 1
 
@@ -20,10 +20,13 @@ for i in 1:N
     O[:,:,i] = Ob
 end
 
-expvalues = @time dynamics.xymodel_dynamics(N,x0,sigma,D,T,Nt,h_list,alpha,O)
+H = dynamics.xymodel_Hamiltonian(h_list,alpha)
+MPS = dynamics.create_excited_state(N,x0,sigma,D)
+
+expvalues = @time dynamics.VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
 x = 1:(Nt+1)
 plot(x,real(expvalues))
-savefig("xyplot_gaussian.png")#
+#savefig("xyplot_gaussian9.png")#
 
 function plot_series(x,data,filename,title_name)
     u = maximum(data)
@@ -38,9 +41,9 @@ function plot_series(x,data,filename,title_name)
     end
 end
 
-filename = "xyplot_gaussian"
+filename = "xyplot_gaussian9"
 x = 1:N
-plot_series(x,real(expvalues),filename,"xymodel plot")
+#plot_series(x,real(expvalues),filename,"xymodel plot")
 #=
 run(`convert -delay 5 -loop 0 $(filename)_\*.png $filename.gif`)
 run(`rm $(filename)_\*.png`)
