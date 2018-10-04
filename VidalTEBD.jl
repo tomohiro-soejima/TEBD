@@ -228,12 +228,18 @@ function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
     for j in 1:N_site
         expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+        if expvalue[1,j] > 1
+            println("expvalue at site $(j) at time step 1 is $(expvalue[1,j])",)
+        end
     end
     for i in 1:N
         update_oddsite!(MPS,U)
         update_evensite!(MPS,U)
         for j in 1:N_site
         expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+        end
+        if expvalue[i+1,j] > 1
+            println("expvalue at site $(j) at time step $(i+1) is $(expvalue[i+1,j])",)
         end
     end
     expvalue
