@@ -4,12 +4,12 @@ using Plots
 using Printf
 
 #initialize
-N = 21
-x0 = 11
-sigma = 2
+N = 101
+x0 = 51
+sigma = 5
 D = 2
-T = 0.1*pi
-Nt = 5
+T = 10pi
+Nt = 500
 h_list = zeros(Float64,N)
 a = 1
 
@@ -26,7 +26,7 @@ MPS = dynamics.create_excited_state(N,x0,sigma,D)
 expvalues = @time dynamics.VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
 x = 1:(Nt+1)
 plot(x,real(expvalues))
-#savefig("xyplot_gaussian9.png")#
+savefig("xyplot_gaussian_101sites_3.png")#
 
 function plot_series(x,data,filename,title_name)
     u = maximum(data)
@@ -41,9 +41,9 @@ function plot_series(x,data,filename,title_name)
     end
 end
 
-filename = "xyplot_gaussian9"
+filename = "xyplot_gaussian_101sites_3"
 x = 1:N
-#plot_series(x,real(expvalues),filename,"xymodel plot")
+plot_series(x,real(expvalues),filename,"xymodel plot")
 #=
 run(`convert -delay 5 -loop 0 $(filename)_\*.png $filename.gif`)
 run(`rm $(filename)_\*.png`)
