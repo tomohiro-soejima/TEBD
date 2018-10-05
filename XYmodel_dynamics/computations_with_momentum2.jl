@@ -5,13 +5,13 @@ using Printf
 using LinearAlgebra
 
 #filename
-filename = "xy_model_with_momentum"
+filename = "xy_model_with_momentum2"
 
 #initialize
 N = 101
 x0 = 51
 sigma = 5
-D = 2
+D = 20
 T = 10*pi
 Nt = 500
 h_list = zeros(Float64,N)

@@ -3,6 +3,8 @@ using .dynamics
 using Plots
 using Printf
 
+#filename
+
 #initialize
 N = 101
 x0 = 51
@@ -26,7 +28,7 @@ MPS = dynamics.create_excited_state(N,x0,sigma,D)
 expvalues = @time dynamics.VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
 x = 1:(Nt+1)
 plot(x,real(expvalues))
-savefig("xyplot_gaussian_101sites_3.png")#
+savefig("xyplot_gaussian_101sites_1.png")#
 
 function plot_series(x,data,filename,title_name)
     u = maximum(data)
@@ -41,7 +43,7 @@ function plot_series(x,data,filename,title_name)
     end
 end
 
-filename = "xyplot_gaussian_101sites_3"
+filename = "xyplot_gaussian_101sites_1"
 x = 1:N
 plot_series(x,real(expvalues),filename,"xymodel plot")
 #=
