@@ -136,27 +136,26 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
 
     L1_inv = zero(L1)
     for i in 1:D
-        if L1[i] != 0
+        if L1[i] > 10^-6
             L1_inv[i] = 1/L1[i]
         end
     end
     Gamma1[:,:,:] = contract(Diagonal(L1_inv),[2],GL1,[1])
 
     S = zeros(Float64,D)
-    #=for i in 1:D
+    for i in 1:D
         if F.S[i] > 10^-6
             S[i] = F.S[i]
         else
-            S[i] = 10^-6
+            S[i] = 0 #somehow if I make this 10^-6 my code explods
         end
-    end =#
-    #@views L2[:] = S[:]/sqrt(sum(S[:].^2))
-    @views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
+    end
+    @views L2[:] = S[:]/sqrt(sum(S[:].^2))
+    #@views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
     L3_inv = zero(L3)
     for i in 1:D
-        if L3[i] != 0
+        if L3[i] >10^-6
             L3_inv[i] = 1/L3[i]
-            println(L3_inv[i])
         end
     end
     Gamma2[:,:,:]= PermutedDimsArray(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
