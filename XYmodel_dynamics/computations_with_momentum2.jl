@@ -44,7 +44,7 @@ MPS = dynamics.VidalTEBD.convert_to_Vidal(MPS3)
 expvalues = @time dynamics.VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
 x = 1:(Nt+1)
 plot(x,real(expvalues))
-savefig(filename*"png")#
+savefig(filename*".png")#
 
 function plot_series(x,data,filename,title_name,sep=1)
     u = maximum(data)

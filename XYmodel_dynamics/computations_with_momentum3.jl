@@ -2,18 +2,19 @@ include("./XYmodel_dynamics.jl")
 using .dynamics
 using Plots
 using Printf
+using Profile
 using LinearAlgebra
 
 #filename
-filename = "xy_model_with_momentum"
+filename = "xy_model_with_momentum3"
 
 #initialize
 N = 101
 x0 = 51
 sigma = 5
-D = 2
-T = 10*pi
-Nt = 500
+D = 20
+T = pi
+Nt = 5
 h_list = zeros(Float64,N)
 k = 1/10
 a = 1
@@ -41,7 +42,7 @@ MPS2 = dynamics.VidalTEBD.make_productVidalMPS(PS,D)
 MPS3 = dynamics.VidalTEBD.do_MPOonMPS(MPS2,MPO)
 MPS = dynamics.VidalTEBD.convert_to_Vidal(MPS3)
 
-expvalues = @time dynamics.VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
+@profile expvalues = dynamics.VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
 x = 1:(Nt+1)
 plot(x,real(expvalues))
 savefig(filename*".png")#
@@ -62,7 +63,7 @@ function plot_series(x,data,filename,title_name,sep=1)
 end
 
 x = 1:N
-plot_series(x,real(expvalues),filename,"xymodel plot",10)
+@time plot_series(x,real(expvalues),filename,"xymodel plot",1)
 #=
 run(`convert -delay 5 -loop 0 $(filename)_\*.png $filename.gif`)
 run(`rm $(filename)_\*.png`)

@@ -1,21 +1,20 @@
 include("./XYmodel_dynamics.jl")
 using .dynamics
+using Profile
 using Plots
 using Printf
-using LinearAlgebra
 
 #filename
-filename = "xy_model_with_momentum"
+filename = "xy_model_without_momentum2"
 
 #initialize
 N = 101
 x0 = 51
 sigma = 5
 D = 2
-T = 10*pi
-Nt = 500
+T = 200pi
+Nt = 10000
 h_list = zeros(Float64,N)
-k = 1/10
 a = 1
 
 #define which variables to measure
@@ -26,32 +25,19 @@ for i in 1:N
 end
 
 H = dynamics.xymodel_Hamiltonian(h_list,a)
-
-U = LinearAlgebra.Diagonal([0,1,0,0]) #spin down ladder operator
-U2 = ones(4,N)
-U1 = reshape(U*U2,2,2,N)
-P = [exp(-(xi-x0)^2/(2*sigma^2)+im*xi*k) for xi in 1:N]
-MPO = dynamics.VidalTEBD.make_superpositionMPO(U1,P)
-#make all up product state
-zeros(Complex{Float64},2,2)
-PS = zeros(Float64,(2,N))
-PS[1,:] = ones(Float64,N)
-MPS2 = dynamics.VidalTEBD.make_productVidalMPS(PS,D)
-#Apply MPO
-MPS3 = dynamics.VidalTEBD.do_MPOonMPS(MPS2,MPO)
-MPS = dynamics.VidalTEBD.convert_to_Vidal(MPS3)
+MPS = dynamics.create_excited_state(N,x0,sigma,D)
 
 expvalues = @time dynamics.VidalTEBD.getTEBDexpvalue!(MPS,H,T,Nt,O)
 x = 1:(Nt+1)
 plot(x,real(expvalues))
-savefig(filename*".png")#
+savefig(filename*"png")#
 
 function plot_series(x,data,filename,title_name,sep=1)
     u = maximum(data)
     k = 1
     for i in 1:sep:size(data)[1]
         plot(x, real(data[i,:]),title = title_name,lw =3)
-        full_title = @sprintf(" t = %.2f pi", 10*(i-1)/(size(data)[1]-1))
+        full_title = @sprintf(" t = %.1f pi", 200*(i-1)/(size(data)[1]-1))
         xlabel!("Position")
         ylabel!("1/2 - <Sz>")
         ylims!((-u*1.2,u*1.2))
@@ -62,7 +48,7 @@ function plot_series(x,data,filename,title_name,sep=1)
 end
 
 x = 1:N
-plot_series(x,real(expvalues),filename,"xymodel plot",10)
+@time plot_series(x,real(expvalues),filename,"xymodel plot",100)
 #=
 run(`convert -delay 5 -loop 0 $(filename)_\*.png $filename.gif`)
 run(`rm $(filename)_\*.png`)
