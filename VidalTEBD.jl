@@ -368,15 +368,15 @@ function contract(M,loc1,Gamma,loc2)
     index1 = filter(p->p∉loc1,collect(1:dim1))
     index2 = filter(p->p∉loc2,collect(1:dim2))
     if size(loc1)[1] == dim1
-        M2 = reshape(M,1,prod(size1[loc1]))
+        M2 = copy(reshape(M,1,prod(size1[loc1])))
     else
-        M2 = reshape(PermutedDimsArray(M,Tuple(vcat(index1,loc1))),prod(size1[index1]),prod(size1[loc1]))
+        M2 = copy(reshape(PermutedDimsArray(M,Tuple(vcat(index1,loc1))),prod(size1[index1]),prod(size1[loc1])))
     end
 
     if size(loc2)[1] == dim2
-        Gamma2 = reshape(Gamma,prod(size2[loc2]))
+        Gamma2 = copy(reshape(Gamma,prod(size2[loc2])))
     else
-        Gamma2 = reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2]))
+        Gamma2 = copy(reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2])))
     end
     reshape(M2*Gamma2,Tuple(vcat(size1[index1],size2[index2])))
 end
