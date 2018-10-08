@@ -178,7 +178,7 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
             L3_inv[i] = 1/L3[i]
         end
     end
-    Gamma2[:,:,:]= PermutedDimsArray(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
+    Gamma2[:,:,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
 end
 function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
     del = T/N
