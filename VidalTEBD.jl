@@ -7,6 +7,8 @@ export contract
 using BenchmarkTools
 using LinearAlgebra
 
+GammaMat = Array{Complex{Float64},4}
+
 struct VidalMPS
     #MPS in Vidal canonical form
     Gamma::Array{Complex{Float64},4} #dim = D,D,d,N
@@ -68,11 +70,29 @@ function make_biggerMPS(MPS::VidalMPS,D_new)
     LambdaNew[1:D_old,N] = Lambda
     VidalMPS(GammaNew,LambdaNew)
 end
+
 function onegate_onMPS!(MPS::VidalMPS,U,loc)
+    onegate_onMPS2!(MPS::VidalMPS,U,loc)
+end
+
+function onegate_onMPS1!(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
     R = PermutedDimsArray(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     R[:,:] = U*R
 end
+
+function onegate_onMPS2!(MPS::VidalMPS,U::Array{Complex{Float64},2},loc::Int64)
+    D,D2,d,N = size(MPS.Gamma)
+    R = permutedims(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
+    MPS.Gamma[:,:,:,loc] = reshape(PermutedDimsArray(U*R,(2,1)),D,D,d)
+    #=Lambdap = MPS.Lambda
+    Gammap = Array{Complex{Float64},2}(undef,D^2,d)
+    mul!(Gammap,U,R)
+    Gammap2 = reshape(Gammap,D,D,d)
+
+    return VidalMPS(Gammap,Lambdap)=#
+end
+
 function onesite_expvalue(MPS::VidalMPS,U,loc)
     onesite_expvalue2(MPS,U,loc)
 end
