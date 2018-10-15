@@ -7,21 +7,21 @@ using .VidalTEBD
 using Plots
 using Printf
 using Profile
+using ProfileView
 using LinearAlgebra
 using Traceur
 
-#filename
-filename = "TFIM_TEBD"
+
 
 #initialize
-N = 64
+N = 3
 #these values ensure chaos, following Gil Rafael's convention
 hx = 0.9045
 hz = 0.8090
 
-D = 64
-T = 200
-Nt = 2000
+D = 40
+T = 1
+Nt = 1
 
 #make Ising Hamiltonian
 function make_TFIM_H(hx,hz,N)
@@ -51,10 +51,56 @@ function initialize_state(N,D)
     VidalTEBD.make_productVidalMPS(PS,D)
 end
 
+#=
+#filename
+filename = "TFIM_TEBD"
 MPS = initialize_state(N,D)
-
 renyivalue = @time VidalTEBD.TEBDwithRenyi!(MPS,H,T,Nt,32,2)
-
 x = 1:(Nt+1)
 plot(x,renyivalue)
 savefig(filename*".png")
+=#
+
+function makeMPOforTHIM(hx,hz,N)
+    d = 2
+    M1 = [1,0,0]
+    Mend = [0,0,1]
+    M = zeros(Complex{Float64},3,3,d,d)
+    M[1,1,:,:] = Matrix{Complex{Float64}}(I,d,d)
+    M[1,2,:,:] = [1/2 0;0 -1/2]
+    M[1,3,:,:] = hx/2*[0 1/2;1/2 0]+hz/2*[1/2 0;0 -1/2]
+    M[2,3,:,:] = [1/2 0;0 -1/2]
+    M[3,3,:,:] = Matrix{Complex{Float64}}(I,d,d)
+    Mall = zeros(Complex{Float64},3,3,d,d,N)
+    for i in 1:N
+        Mall[:,:,:,:,i] = M
+    end
+    VidalTEBD.MatrixProductOperator(M1,Mall,Mend)
+end
+
+
+
+
+#filename
+filename = "TFIM_TEBD_E"
+MPS = initialize_state(N,D)
+MPO = makeMPOforTHIM(hx,hz,N)
+VidalTEBD.getMPOexpvalue(MPS,MPO)
+Profile.clear()
+@time VidalTEBD.getMPOexpvalue(MPS,MPO)
+MPS = initialize_state(N,D)
+@show(@allocated VidalTEBD.getMPOexpvalue(MPS,MPO))
+MPS = initialize_state(N,D)
+@profile VidalTEBD.getMPOexpvalue(MPS,MPO)
+
+#=
+Profile.clear()
+VidalTEBD.TEBD!(MPS,H,T,Nt)
+MPS = initialize_state(N,D)
+energyvalue = @time VidalTEBD.TEBD!(MPS,H,T,Nt)#,MPO = MPO)
+MPS = initialize_state(N,D)
+energyvalue = @profile VidalTEBD.TEBD!(MPS,H,T,Nt)#,MPO = MPO)
+x = 1:(Nt+1)
+#plot(x,real(energyvalue))
+#savefig(filename*".png")
+=#

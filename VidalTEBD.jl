@@ -423,8 +423,8 @@ function contract(M,loc1,Gamma,loc2)
     if size(loc2)[1] == dim2
         Gamma2 = copy(reshape(Gamma,prod(size2[loc2])))
     else
-        #Gamma2 = copy(reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2])))
-        Gamma2 = reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2]))
+        Gamma2 = copy(reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2])))
+        #Gamma2 = reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2]))
 
     end
     reshape(M2*Gamma2,Tuple(vcat(size1[index1],size2[index2])))
