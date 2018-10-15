@@ -182,7 +182,7 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
     Gamma2[:,:,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
 end
 function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
-    if Operator != nothing
+    if operator != nothing
         return getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,operator)
     elseif α != nothing
         return TEBDwithRenyi!(MPS,H,T,N,loc,α)
@@ -303,7 +303,7 @@ function TEBDwithMPO!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,MPO::MatrixProductO
     d,d2,N_site = size(H.OneSite)
     del = T/N
     U = makeNNQuadUnitary(H,del::Float64)
-    MPOvalue = zeros(Float64,N+1)
+    MPOvalue = zeros(Complex{Float64},N+1)
     MPOvalue[1] = getMPOexpvalue(MPS,MPO)
     for i in 1:N
         update_oddsite!(MPS,U)
@@ -464,33 +464,27 @@ end
 function getMPOexpvalue(MPS::VidalMPS,MPO::MatrixProductOperator)
     D1,D11, d,N = size(MPS.Gamma)
     D2,D22, dx,dy,Nx = size(MPO.M)
-    M = Array{Array{Complex{Float64}},1}(undef,N)
-
     #the first site
+    @views begin
     M1 = contract(MPO.M1,[1],MPO.M[:,:,:,:,1],[1])#D2,d,d
     G1 = MPS.Gamma[1,:,:,1] #D1,d
     G11 = contract(M1,[3],G1,[2])#D2,d,D1
     G12 = contract(conj.(G1),[2],G11,[2])#D1,D2,D1
-    M[1] = G12
+    end
+    M = G12
     #in the middle
     for i in 2:N-1
         @views Mi = MPO.M[:,:,:,:,i]#D2,D2,d,d
-        Gi = contract(Diagonal(MPS.Lambda[:,i]),[2],MPS.Gamma[:,:,:,i],[1])#D1,D1,d
+        @views Gi = contract(Diagonal(MPS.Lambda[:,i]),[2],MPS.Gamma[:,:,:,i],[1])#D1,D1,d
         Gi1 = contract(Mi,[4],Gi,[3])#D2,D2,d,D1,D1
-        Gi2 = contract(conj.(Gi),[3],Gi1,[2]) #D1,D1,D2,D2,D1,D1
-        M[i] = Gi2
+        Gi2 = contract(conj.(Gi),[3],Gi1,[3]) #D1,D1,D2,D2,D1,D1
+        M[:,:,:] = contract(M,[1,2,3],Gi2,[1,3,5])
     end
     MN = contract(MPO.M[:,:,:,:,N],[2],MPO.Mend,[1])#D2,d,d
-    GN = contract(Diagonal(MPS.Lambda[:,N]),[2],MPS.Gamma[:,1,:,N])#D1,d
+    GN = contract(Diagonal(MPS.Lambda[:,N]),[2],MPS.Gamma[:,1,:,N],[1])#D1,d
     GN1 = contract(MN,[3],GN,[2])#D2,d,D1
     GN2 = contract(conj.(GN),[2],GN1,[2]) #D1,D2,D1
-    M[N] = GN2
-
-    T = M[1]
-    for i in 2:N-1
-        T[:,:,:] = contract(T,[1,2,3],M[i],[1,3,5])
-    end
-    return conract(T,[1,2,3],M[N],[1,2,3])[1]
+    return contract(M,[1,2,3],GN2,[1,2,3])[1]
 end
 
 
