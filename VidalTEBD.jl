@@ -142,7 +142,8 @@ function theta_ij(MPS::VidalMPS,U,loc)
         S2[:,(j-1)*D+1:j*D] = view(Gamma2,:,:,j)*Diagonal(L3)
     end
     theta = reshape(PermutedDimsArray(reshape(S1*S2,D,d,D,d),(2,4,1,3)),d^2,D^2)
-    reshape(PermutedDimsArray(reshape(U*theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
+    A = reshape(PermutedDimsArray(reshape(U*theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
+    return A
 end
 function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
     D,D2,d,N = size(MPS.Gamma)
@@ -156,7 +157,7 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
 
     L1_inv = zero(L1)
     for i in 1:D
-        if L1[i] > 10^-6
+        if L1[i] > 10^-10
             L1_inv[i] = 1/L1[i]
         end
     end
@@ -164,7 +165,7 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
 
     S = zeros(Float64,D)
     for i in 1:D
-        if F.S[i] > 10^-6
+        if F.S[i] > 10^-10
             S[i] = F.S[i]
         else
             S[i] = 0 #somehow if I make this 10^-6 my code explods
@@ -174,20 +175,38 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
     #@views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
     L3_inv = zero(L3)
     for i in 1:D
-        if L3[i] >10^-6
+        if L3[i] >10^-10
             L3_inv[i] = 1/L3[i]
         end
     end
     Gamma2[:,:,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
 end
-function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
+function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
+    if Operator != nothing
+        return getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,operator)
+    elseif α != nothing
+        return TEBDwithRenyi!(MPS,H,T,N,loc,α)
+    elseif MPO != nothing
+        return TEBDwithMPO!(MPS,H,T,N,MPO)
+    else
+        return TEBD_simple!(MPS,H,T,N)
+    end
+end
+
+function TEBD_simple!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
     del = T/N
     U = makeNNQuadUnitary(H,del::Float64)
     for i in 1:N
-        update_oddsite!(MPS,U)
-        update_evensite!(MPS,U)
+        try
+            update_oddsite!(MPS,U)
+            update_evensite!(MPS,U)
+        catch y
+            println("This happened after ",i," th time step")
+            error(y)
+        end
     end
 end
+
 function update_oddsite!(MPS::VidalMPS,U::NNQuadUnitary)
     D,D2,d,N = size(MPS.Gamma)
     for loc in 1:2:N-1
@@ -280,6 +299,19 @@ function TEBDwithRenyi!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,loc,α)
     return renyivalue
 end
 
+function TEBDwithMPO!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,MPO::MatrixProductOperator)
+    d,d2,N_site = size(H.OneSite)
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    MPOvalue = zeros(Float64,N+1)
+    MPOvalue[1] = getMPOexpvalue(MPS,MPO)
+    for i in 1:N
+        update_oddsite!(MPS,U)
+        update_evensite!(MPS,U)
+        MPOvalue[i+1] = getMPOexpvalue(MPS,MPO)
+    end
+    return MPOvalue
+end
 
 function make_superpositionMPO(U,P)
     d,d2,N = size(U)
@@ -422,12 +454,45 @@ function normalization_test(MPS::VidalMPS,index,side)
 end
 
 function getRenyi(MPS::VidalMPS,loc,α)
-    """
+    #=
     get αth Renyi entropy for a cut between site loc and loc+1
-    """
+    =#
     Lambda = MPS.Lambda[:,loc+1]
-    return 1/(1-α) log(sum(Lambda .^ α))
+    return 1/(1-α)*log(sum(Lambda .^ (2*α)))
 end
+
+function getMPOexpvalue(MPS::VidalMPS,MPO::MatrixProductOperator)
+    D1,D11, d,N = size(MPS.Gamma)
+    D2,D22, dx,dy,Nx = size(MPO.M)
+    M = Array{Array{Complex{Float64}},1}(undef,N)
+
+    #the first site
+    M1 = contract(MPO.M1,[1],MPO.M[:,:,:,:,1],[1])#D2,d,d
+    G1 = MPS.Gamma[1,:,:,1] #D1,d
+    G11 = contract(M1,[3],G1,[2])#D2,d,D1
+    G12 = contract(conj.(G1),[2],G11,[2])#D1,D2,D1
+    M[1] = G12
+    #in the middle
+    for i in 2:N-1
+        @views Mi = MPO.M[:,:,:,:,i]#D2,D2,d,d
+        Gi = contract(Diagonal(MPS.Lambda[:,i]),[2],MPS.Gamma[:,:,:,i],[1])#D1,D1,d
+        Gi1 = contract(Mi,[4],Gi,[3])#D2,D2,d,D1,D1
+        Gi2 = contract(conj.(Gi),[3],Gi1,[2]) #D1,D1,D2,D2,D1,D1
+        M[i] = Gi2
+    end
+    MN = contract(MPO.M[:,:,:,:,N],[2],MPO.Mend,[1])#D2,d,d
+    GN = contract(Diagonal(MPS.Lambda[:,N]),[2],MPS.Gamma[:,1,:,N])#D1,d
+    GN1 = contract(MN,[3],GN,[2])#D2,d,D1
+    GN2 = contract(conj.(GN),[2],GN1,[2]) #D1,D2,D1
+    M[N] = GN2
+
+    T = M[1]
+    for i in 2:N-1
+        T[:,:,:] = contract(T,[1,2,3],M[i],[1,3,5])
+    end
+    return conract(T,[1,2,3],M[N],[1,2,3])[1]
+end
+
 
 #this end is for the module
 end
