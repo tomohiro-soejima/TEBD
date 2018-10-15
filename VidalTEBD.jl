@@ -266,6 +266,21 @@ function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     expvalue
 end
 
+function TEBDwithRenyi!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,loc,α)
+    d,d2,N_site = size(H.OneSite)
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    renyivalue = zeros(Float64,N+1)
+    renyivalue[1] = getRenyi(MPS,loc,α)
+    for i in 1:N
+        update_oddsite!(MPS,U)
+        update_evensite!(MPS,U)
+        renyivalue[i+1] = getRenyi(MPS,loc,α)
+    end
+    return renyivalue
+end
+
+
 function make_superpositionMPO(U,P)
     d,d2,N = size(U)
     M = zeros(Complex{Float64},2,2,d,d,N)
@@ -406,8 +421,13 @@ function normalization_test(MPS::VidalMPS,index,side)
     a
 end
 
-
-
+function getRenyi(MPS::VidalMPS,loc,α)
+    """
+    get αth Renyi entropy for a cut between site loc and loc+1
+    """
+    Lambda = MPS.Lambda[:,loc+1]
+    return 1/(1-α) log(sum(Lambda .^ α))
+end
 
 #this end is for the module
 end
