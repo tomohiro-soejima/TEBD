@@ -85,12 +85,6 @@ function onegate_onMPS2!(MPS::VidalMPS,U::Array{Complex{Float64},2},loc::Int64)
     D,D2,d,N = size(MPS.Gamma)
     R = permutedims(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     MPS.Gamma[:,:,:,loc] = reshape(PermutedDimsArray(U*R,(2,1)),D,D,d)
-    #=Lambdap = MPS.Lambda
-    Gammap = Array{Complex{Float64},2}(undef,D^2,d)
-    mul!(Gammap,U,R)
-    Gammap2 = reshape(Gammap,D,D,d)
-
-    return VidalMPS(Gammap,Lambdap)=#
 end
 
 function onesite_expvalue(MPS::VidalMPS,U,loc)
@@ -415,16 +409,15 @@ function contract(M,loc1,Gamma,loc2)
     index1 = filter(p->p∉loc1,collect(1:dim1))
     index2 = filter(p->p∉loc2,collect(1:dim2))
     if size(loc1)[1] == dim1
-        M2 = copy(reshape(M,1,prod(size1[loc1])))
+        M2 = reshape(M,1,prod(size1[loc1]))
     else
-        M2 = copy(reshape(PermutedDimsArray(M,Tuple(vcat(index1,loc1))),prod(size1[index1]),prod(size1[loc1])))
+        M2 = copy(reshape(permutedims(M,Tuple(vcat(index1,loc1))),prod(size1[index1]),prod(size1[loc1])))
     end
 
     if size(loc2)[1] == dim2
-        Gamma2 = copy(reshape(Gamma,prod(size2[loc2])))
+        Gamma2 = reshape(Gamma,prod(size2[loc2]))
     else
-        Gamma2 = copy(reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2])))
-        #Gamma2 = reshape(PermutedDimsArray(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2]))
+        Gamma2 = (reshape(permutedims(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2])))
 
     end
     reshape(M2*Gamma2,Tuple(vcat(size1[index1],size2[index2])))
