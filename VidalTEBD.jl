@@ -411,7 +411,7 @@ function contract(M,loc1,Gamma,loc2)
     if size(loc1)[1] == dim1
         M2 = reshape(M,1,prod(size1[loc1]))
     else
-        M2 = copy(reshape(permutedims(M,Tuple(vcat(index1,loc1))),prod(size1[index1]),prod(size1[loc1])))
+        M2 = reshape(permutedims(M,Tuple(vcat(index1,loc1))),prod(size1[index1]),prod(size1[loc1]))
     end
 
     if size(loc2)[1] == dim2
