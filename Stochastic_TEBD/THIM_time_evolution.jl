@@ -10,18 +10,20 @@ using Profile
 using ProfileView
 using LinearAlgebra
 using Traceur
+using BenchmarkTools
 
+filename = "TFIM_TEBD_E_D_16"
 
 
 #initialize
-N = 3
+N = 64
 #these values ensure chaos, following Gil Rafael's convention
 hx = 0.9045
 hz = 0.8090
 
-D = 40
-T = 1
-Nt = 1
+D = 16
+T = 200
+Nt = round(Int64,T/0.0625)
 
 #make Ising Hamiltonian
 function make_TFIM_H(hx,hz,N)
@@ -81,26 +83,10 @@ end
 
 
 
-#filename
-filename = "TFIM_TEBD_E"
 MPS = initialize_state(N,D)
 MPO = makeMPOforTHIM(hx,hz,N)
-VidalTEBD.getMPOexpvalue(MPS,MPO)
 Profile.clear()
-@time VidalTEBD.getMPOexpvalue(MPS,MPO)
-MPS = initialize_state(N,D)
-@show(@allocated VidalTEBD.getMPOexpvalue(MPS,MPO))
-MPS = initialize_state(N,D)
-@profile VidalTEBD.getMPOexpvalue(MPS,MPO)
-
-#=
-Profile.clear()
-VidalTEBD.TEBD!(MPS,H,T,Nt)
-MPS = initialize_state(N,D)
-energyvalue = @time VidalTEBD.TEBD!(MPS,H,T,Nt)#,MPO = MPO)
-MPS = initialize_state(N,D)
-energyvalue = @profile VidalTEBD.TEBD!(MPS,H,T,Nt)#,MPO = MPO)
-x = 1:(Nt+1)
-#plot(x,real(energyvalue))
-#savefig(filename*".png")
-=#
+energyvalue = @profile VidalTEBD.TEBD!(MPS,H,T,Nt,MPO = MPO)
+x = (1:(Nt+1))*0.0625
+plot(x,real(energyvalue))
+savefig(filename*".png")

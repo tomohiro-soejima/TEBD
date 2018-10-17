@@ -139,7 +139,7 @@ function theta_ij(MPS::VidalMPS,U,loc)
     A = reshape(PermutedDimsArray(reshape(U*theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
     return A
 end
-function updateMPSafter_twogate!(MPS::VidalMPS,F,loc)
+function updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
     L2 = view(MPS.Lambda,:,loc+1)
