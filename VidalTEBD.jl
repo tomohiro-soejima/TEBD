@@ -402,25 +402,30 @@ function contract(M,loc1,Gamma,loc2)
     loc1,loc2 are arrays of index to be contracted
     Make sure prod(size1[loc1]) = prod(size2[loc2])
     =#
-    size1 = collect(size(M))
-    dim1 = size(size1)[1]
-    size2 = collect(size(Gamma))
-    dim2 = size(size2)[1]
+    size1 = size(M)
+    dim1 = length(size1)
+    size2 = size(Gamma)
+    dim2 = length(size2)
     index1 = filter(p->p∉loc1,collect(1:dim1))
     index2 = filter(p->p∉loc2,collect(1:dim2))
+    dim_M2_1 = prod(size1[index1])
+    dim_M2_2 = prod(size1[loc1])
+    dim_G2_2 = prod(size2[index2])
+    dim_G2_1 = prod(size2[loc2])
+
     if size(loc1)[1] == dim1
-        M2 = reshape(M,1,prod(size1[loc1]))
+        M2 = reshape(M,1,dim_M2_2)
     else
-        M2 = reshape(permutedims(M,Tuple(vcat(index1,loc1))),prod(size1[index1]),prod(size1[loc1]))
+        M2 = reshape(permutedims(M,Tuple(vcat(index1,loc1))),dim_M2_1,dim_M2_2)
     end
 
     if size(loc2)[1] == dim2
-        Gamma2 = reshape(Gamma,prod(size2[loc2]))
+        Gamma2 = reshape(Gamma,dim_G2_1)
     else
-        Gamma2 = (reshape(permutedims(Gamma,Tuple(vcat(loc2,index2))),prod(size2[loc2]),prod(size2[index2])))
-
+        Gamma2 = (reshape(permutedims(Gamma,Tuple(vcat(loc2,index2))),dim_G2_1,dim_G2_2))
     end
-    reshape(M2*Gamma2,Tuple(vcat(size1[index1],size2[index2])))
+    reshape(M2*Gamma2,(size1[index1]...,size2[index2]...))
+
 end
 
 function normalization_test(MPS::VidalMPS,index,side)
@@ -464,22 +469,20 @@ function getMPOexpvalue(MPS::VidalMPS,MPO::MatrixProductOperator)
     M1 = contract(MPO.M1,[1],MPO.M[:,:,:,:,1],[1])#D2,d,d
     G1 = MPS.Gamma[1,:,:,1] #D1,d
     G11 = contract(M1,[3],G1,[2])#D2,d,D1
-    G12 = contract(conj.(G1),[2],G11,[2])#D1,D2,D1
+    T = contract(conj.(G1),[2],G11,[2])#D1,D2,D1
     end
-    M = G12
-    #in the middle
     for i in 2:N-1
         @views Mi = MPO.M[:,:,:,:,i]#D2,D2,d,d
         @views Gi = contract(Diagonal(MPS.Lambda[:,i]),[2],MPS.Gamma[:,:,:,i],[1])#D1,D1,d
-        Gi1 = contract(Mi,[4],Gi,[3])#D2,D2,d,D1,D1
-        Gi2 = contract(conj.(Gi),[3],Gi1,[3]) #D1,D1,D2,D2,D1,D1
-        M[:,:,:] = contract(M,[1,2,3],Gi2,[1,3,5])
+        T1 = contract(T,[3],Gi,[1])#D1,D2,D1,d
+        T2 = contract(Mi,[1,4],T1,[2,4]) #D2,d,D1,D1
+        T[:,:,:] = contract(conj.(Gi),[3,1],T2,[2,3])
     end
     MN = contract(MPO.M[:,:,:,:,N],[2],MPO.Mend,[1])#D2,d,d
     GN = contract(Diagonal(MPS.Lambda[:,N]),[2],MPS.Gamma[:,1,:,N],[1])#D1,d
-    GN1 = contract(MN,[3],GN,[2])#D2,d,D1
-    GN2 = contract(conj.(GN),[2],GN1,[2]) #D1,D2,D1
-    return contract(M,[1,2,3],GN2,[1,2,3])[1]
+    T1 = contract(T,[3],GN,[1])#D1,D2,d
+    T2 = contract(T1,[2,3],MN,[1,3]) #D1,d
+    return contract(T2,[1,2],conj.(GN),[1,2])[1]
 end
 
 
