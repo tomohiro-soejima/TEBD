@@ -535,7 +535,7 @@ function getStochasticTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     expvalue
 end
 
-function stochasticTEBDwithRenyi(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,loc,α)
+function stochasticTEBDwithRenyi!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,loc,α)
     d,d2,N_site = size(H.OneSite)
     del = T/N
     U = makeNNQuadUnitary(H,del::Float64)

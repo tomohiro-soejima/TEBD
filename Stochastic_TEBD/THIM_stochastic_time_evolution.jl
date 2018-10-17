@@ -12,7 +12,6 @@ using LinearAlgebra
 using Traceur
 using BenchmarkTools
 
-filename = "TFIM_TEBD_E_D_16_stochastic"
 
 
 #initialize
@@ -53,15 +52,21 @@ function initialize_state(N,D)
     VidalTEBD.make_productVidalMPS(PS,D)
 end
 
-#=
-#filename
-filename = "TFIM_TEBD"
+filename = "TFIM_TEBD_Renyi_D_16_2"
+
 MPS = initialize_state(N,D)
 renyivalue = @time VidalTEBD.TEBDwithRenyi!(MPS,H,T,Nt,32,2)
-x = 1:(Nt+1)
+x = (1:(Nt+1))*0.0625
 plot(x,renyivalue)
 savefig(filename*".png")
-=#
+
+filename = "TFIM_TEBD_Renyi_D_16_stochastic_2"
+
+MPS = initialize_state(N,D)
+renyivalue = @time VidalTEBD.stochasticTEBDwithRenyi!(MPS,H,T,Nt,32,2)
+x = (1:(Nt+1))*0.0625
+plot(x,renyivalue)
+savefig(filename*".png")
 
 function makeMPOforTHIM(hx,hz,N)
     d = 2
@@ -82,7 +87,7 @@ end
 
 
 
-
+#=
 MPS = initialize_state(N,D)
 MPO = makeMPOforTHIM(hx,hz,N)
 Profile.clear()
@@ -90,3 +95,4 @@ energyvalue = @profile VidalTEBD.stochasticTEBD!(MPS,H,T,Nt,MPO = MPO)
 x = (1:(Nt+1))*0.0625
 plot(x,real(energyvalue))
 savefig(filename*".png")
+=#
