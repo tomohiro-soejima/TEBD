@@ -485,6 +485,148 @@ function getMPOexpvalue(MPS::VidalMPS,MPO::MatrixProductOperator)
     return contract(T2,[1,2],conj.(GN),[1,2])[1]
 end
 
+function stochasticTEBD((MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
+    if operator != nothing
+        return getStochasticTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,operator)
+    elseif α != nothing
+        return stochasticTEBDwithRenyi!(MPS,H,T,N,loc,α)
+    elseif MPO != nothing
+        return stochasticTEBDwithMPO!(MPS,H,T,N,MPO)
+    else
+        return stochasticTEBD_simple!(MPS,H,T,N)
+    end
+end
+
+function stochasticTEBD_simple!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    for i in 1:N
+        try
+            stochastic_update_oddsite!(MPS,U)
+            stochastic_update_evensite!(MPS,U)
+        catch y
+            println("This happened after ",i," th time step")
+            error(y)
+        end
+    end
+end
+
+function getStochasticTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
+    d,d2,N_site = size(H.OneSite)
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
+    for j in 1:N_site
+        expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+        if real(expvalue[1,j]) > 1
+            println("expvalue at site $(j) at time step 1 is $(expvalue[1,j])",)
+        end
+    end
+    for i in 1:N
+        stochastic_update_oddsite!(MPS,U)
+        stochastic_update_evensite!(MPS,U)
+        for j in 1:N_site
+            expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+            if real(expvalue[i+1,j]) > 1
+                println("expvalue at site $(j) at time step $(i+1) is $(expvalue[i+1,j])",)
+            end
+        end
+    end
+    expvalue
+end
+
+function stochasticTEBDwithRenyi(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,loc,α)
+    d,d2,N_site = size(H.OneSite)
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    renyivalue = zeros(Float64,N+1)
+    renyivalue[1] = getRenyi(MPS,loc,α)
+    for i in 1:N
+        stochastic_update_oddsite!(MPS,U)
+        stochastic_update_evensite!(MPS,U)
+        renyivalue[i+1] = getRenyi(MPS,loc,α)
+    end
+    return renyivalue
+end
+
+function stochasticTEBDwithMPO!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,MPO::MatrixProductOperator)
+    d,d2,N_site = size(H.OneSite)
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    MPOvalue = zeros(Complex{Float64},N+1)
+    MPOvalue[1] = getMPOexpvalue(MPS,MPO)
+    for i in 1:N
+        stochastic_update_oddsite!(MPS,U)
+        stochastic_update_evensite!(MPS,U)
+        MPOvalue[i+1] = getMPOexpvalue(MPS,MPO)
+    end
+    return MPOvalue
+end
+
+
+function stochastic_update_oddsite!(MPS::VidalMPS,U::NNQuadUnitary)
+    D,D2,d,N = size(MPS.Gamma)
+    for loc in 1:2:N-1
+        onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
+        stochastic_twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+    end
+    if N%2 == 1
+        onegate_onMPS!(MPS,U.OneSite[:,:,N],N)
+    end
+end
+function stochastic_update_evensite!(MPS::VidalMPS,U::NNQuadUnitary)
+    D,D2,d,N = size(MPS.Gamma)
+    for loc in 2:2:N-1
+        onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
+        stochastic_twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+    end
+    if N%2 == 0
+        onegate_onMPS!(MPS,U.OneSite[:,:,N],N)
+    end
+end
+
+function stochastic_twogate_onMPS!(MPS::VidalMPS,U,loc)
+    thetaNew = theta_ij(MPS,U,loc)
+    F = LinearAlgebra.svd(copy(thetaNew))
+    stochastic_updateMPSafter_twogate!(MPS,F,loc)
+end
+
+function stochastic_updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
+    D,D2,d,N = size(MPS.Gamma)
+    L1 = view(MPS.Lambda,:,loc)
+    L2 = view(MPS.Lambda,:,loc+1)
+    L3 = view(MPS.Lambda,:,loc+2)
+    Gamma1 = view(MPS.Gamma,:,:,:,loc)
+    Gamma2 = view(MPS.Gamma,:,:,:,loc+1)
+    @views GL1 = PermutedDimsArray(reshape(F.U[:,1:D],D,d,D),(1,3,2))
+    @views GL2 = reshape(F.Vt[1:D,:],D,D,d)
+
+    L1_inv = zero(L1)
+    for i in 1:D
+        if L1[i] > 10^-10
+            L1_inv[i] = 1/L1[i]
+        end
+    end
+    Gamma1[:,:,:] = contract(Diagonal(L1_inv),[2],GL1,[1])
+
+    S = zeros(Float64,D)
+    for i in 1:D
+        if F.S[i] > 10^-10
+            S[i] = F.S[i]
+        else
+            S[i] = 0 #somehow if I make this 10^-6 my code explods
+        end
+    end
+    @views L2[:] = S[:]/sqrt(sum(S[:].^2))
+    #@views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
+    L3_inv = zero(L3)
+    for i in 1:D
+        if L3[i] >10^-10
+            L3_inv[i] = 1/L3[i]
+        end
+    end
+    Gamma2[:,:,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
+end
 
 #this end is for the module
 end
