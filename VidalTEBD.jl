@@ -262,7 +262,7 @@ function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
     for j in 1:N_site
         expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
-        if real(expvalue[1,j]) > 1
+        if real(expvalue[1,j]) > 1.1
             println("expvalue at site $(j) at time step 1 is $(expvalue[1,j])",)
         end
     end
@@ -271,7 +271,7 @@ function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
         update_evensite!(MPS,U)
         for j in 1:N_site
             expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
-            if real(expvalue[i+1,j]) > 1
+            if real(expvalue[i+1,j]) > 1.1
                 println("expvalue at site $(j) at time step $(i+1) is $(expvalue[i+1,j])",)
             end
         end
@@ -485,7 +485,7 @@ function getMPOexpvalue(MPS::VidalMPS,MPO::MatrixProductOperator)
     return contract(T2,[1,2],conj.(GN),[1,2])[1]
 end
 
-function stochasticTEBD((MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
+function stochasticTEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
     if operator != nothing
         return getStochasticTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,operator)
     elseif α != nothing
@@ -518,7 +518,7 @@ function getStochasticTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     expvalue = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
     for j in 1:N_site
         expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
-        if real(expvalue[1,j]) > 1
+        if real(expvalue[1,j]) > 1.1
             println("expvalue at site $(j) at time step 1 is $(expvalue[1,j])",)
         end
     end
@@ -527,7 +527,7 @@ function getStochasticTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
         stochastic_update_evensite!(MPS,U)
         for j in 1:N_site
             expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
-            if real(expvalue[i+1,j]) > 1
+            if real(expvalue[i+1,j]) > 1.1
                 println("expvalue at site $(j) at time step $(i+1) is $(expvalue[i+1,j])",)
             end
         end
@@ -598,8 +598,13 @@ function stochastic_updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     L3 = view(MPS.Lambda,:,loc+2)
     Gamma1 = view(MPS.Gamma,:,:,:,loc)
     Gamma2 = view(MPS.Gamma,:,:,:,loc+1)
-    @views GL1 = PermutedDimsArray(reshape(F.U[:,1:D],D,d,D),(1,3,2))
-    @views GL2 = reshape(F.Vt[1:D,:],D,D,d)
+
+    index1 = chooseN(F.S,D)
+    if length(unique(index1))!=D
+        error("stop")
+    end
+    @views GL1 = PermutedDimsArray(reshape(F.U[:,index1],D,d,D),(1,3,2))
+    @views GL2 = reshape(F.Vt[index1,:],D,D,d)
 
     L1_inv = zero(L1)
     for i in 1:D
@@ -611,8 +616,8 @@ function stochastic_updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
 
     S = zeros(Float64,D)
     for i in 1:D
-        if F.S[i] > 10^-10
-            S[i] = F.S[i]
+        if F.S[index1[i]] > 10^-10
+            S[i] = F.S[index1[i]]
         else
             S[i] = 0 #somehow if I make this 10^-6 my code explods
         end
@@ -628,5 +633,34 @@ function stochastic_updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     Gamma2[:,:,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
 end
 
+function chooseN(list::Array{Float64,1},N::Int64)
+    a = copy(list)
+    b = Array{Int64,1}(undef,N)
+    index_list = collect(1:length(list))
+    for i in 1:N
+        bi = choose1(a)
+        if sum(a) == sum(list)
+            error("Something went wrong")
+        end
+        b[i] = index_list[bi]
+        filter!(!isequal(b[i]),index_list)
+    end
+    return b
+end
+
+function choose1(list::Array{Float64,1})
+    p = rand(Float64)
+    for i in 1:length(list)
+        if p < sum(list[1:i])/sum(list)
+            deleteat!(list,i)
+            return i
+        end
+    end
+
+    #if everthing is zero, choose a value randomly
+    i = ceil(Int64,p*length(list))
+    deleteat!(list,i)
+    return i
+end
 #this end is for the module
 end
