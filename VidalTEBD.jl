@@ -413,13 +413,18 @@ function contract(M,loc1,Gamma,loc2)
     dim_G2_2 = prod(size2[index2])
     dim_G2_1 = prod(size2[loc2])
 
-    if size(loc1)[1] == dim1
+
+    if isa(M,Diagonal) & length(loc1) == 1
+        M2 = M
+    elseif size(loc1)[1] == dim1
         M2 = reshape(M,1,dim_M2_2)
     else
         M2 = reshape(permutedims(M,Tuple(vcat(index1,loc1))),dim_M2_1,dim_M2_2)
     end
 
-    if size(loc2)[1] == dim2
+    if isa(Gamma,Diagonal) & length(loc2) == 1
+        Gamma2 = Gamma
+    elseif size(loc2)[1] == dim2
         Gamma2 = reshape(Gamma,dim_G2_1)
     else
         Gamma2 = (reshape(permutedims(Gamma,Tuple(vcat(loc2,index2))),dim_G2_1,dim_G2_2))
