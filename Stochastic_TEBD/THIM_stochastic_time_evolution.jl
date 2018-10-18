@@ -20,8 +20,8 @@ N = 64
 hx = 0.9045
 hz = 0.8090
 
-D = 16
-T = 200
+D = 64
+T = 2
 Nt = round(Int64,T/0.0625)
 
 #make Ising Hamiltonian
@@ -52,21 +52,25 @@ function initialize_state(N,D)
     VidalTEBD.make_productVidalMPS(PS,D)
 end
 
-filename = "TFIM_TEBD_Renyi_D_16_2"
+filename = "TFIM_TEBD_Renyi_D_64_1"
 
 MPS = initialize_state(N,D)
-renyivalue = @time VidalTEBD.TEBDwithRenyi!(MPS,H,T,Nt,32,2)
+Profile.clear()
+renyivalue = @profile VidalTEBD.TEBDwithRenyi!(MPS,H,T,Nt,32,2)
+ProfileView.view()
 x = (1:(Nt+1))*0.0625
 plot(x,renyivalue)
-savefig(filename*".png")
+#savefig(filename*".png")
 
-filename = "TFIM_TEBD_Renyi_D_16_stochastic_2"
+filename = "TFIM_TEBD_Renyi_D_64_stochastic_1"
 
 MPS = initialize_state(N,D)
-renyivalue = @time VidalTEBD.stochasticTEBDwithRenyi!(MPS,H,T,Nt,32,2)
+Profile.clear()
+renyivalue = @profile VidalTEBD.stochasticTEBDwithRenyi!(MPS,H,T,Nt,32,2)
+ProfileView.view()
 x = (1:(Nt+1))*0.0625
 plot(x,renyivalue)
-savefig(filename*".png")
+#savefig(filename*".png")
 
 function makeMPOforTHIM(hx,hz,N)
     d = 2
