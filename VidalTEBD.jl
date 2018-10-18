@@ -604,7 +604,7 @@ function stochastic_updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     Gamma1 = view(MPS.Gamma,:,:,:,loc)
     Gamma2 = view(MPS.Gamma,:,:,:,loc+1)
 
-    index1 = chooseN(F.S,D)
+    index1 = chooseN(F.S .^2,D)
     if length(unique(index1))!=D
         error("stop")
     end
