@@ -1,29 +1,13 @@
 #=
 This is to reproduce the result of DMT paper by Gil Rafael et al.
 =#
+module THIM_TEBD
 
 include("../VidalTEBD.jl")
 using .VidalTEBD
 using Plots
 using Printf
-using Profile
-using ProfileView
 using LinearAlgebra
-using Traceur
-using BenchmarkTools
-
-
-
-#initialize
-N = 64
-#these values ensure chaos, following Gil Rafael's convention
-hx = 0.9045
-hz = 0.8090
-
-D = 64
-T = 1000
-Nt = round(Int64,T/0.0625)
-
 #make Ising Hamiltonian
 function make_TFIM_H(hx,hz,N)
     OneSite = zeros(Float64,4,N)
@@ -34,7 +18,6 @@ function make_TFIM_H(hx,hz,N)
     H = VidalTEBD.NNSpinHalfHamiltonian(OneSite,TwoSite)
     VidalTEBD.makeNNQuadH(H)
 end
-H = make_TFIM_H(hx,hz,N)
 
 #make all up product state
 #there is a mistake in the paper. how should I fix it?
@@ -51,26 +34,6 @@ function initialize_state(N,D)
     end
     VidalTEBD.make_productVidalMPS(PS,D)
 end
-
-filename = "TFIM_TEBD_Renyi_D_64_2"
-
-MPS = initialize_state(N,D)
-Profile.clear()
-renyivalue = @profile VidalTEBD.TEBDwithRenyi!(MPS,H,T,Nt,32,2)
-ProfileView.view()
-x = (1:(Nt+1))*0.0625
-plot(x,renyivalue)
-savefig(filename*".png")
-
-filename = "TFIM_TEBD_Renyi_D_64_stochastic_2"
-
-MPS = initialize_state(N,D)
-Profile.clear()
-renyivalue = @profile VidalTEBD.stochasticTEBDwithRenyi!(MPS,H,T,Nt,32,2)
-ProfileView.view()
-x = (1:(Nt+1))*0.0625
-plot(x,renyivalue)
-savefig(filename*".png")
 
 function makeMPOforTHIM(hx,hz,N)
     d = 2
@@ -89,14 +52,33 @@ function makeMPOforTHIM(hx,hz,N)
     VidalTEBD.MatrixProductOperator(M1,Mall,Mend)
 end
 
+function THIM_TEBD_renyi(hx,hz,N,D,T,loc,α,filename;stochastic = false)
+    Nt = round(Int64,T/0.0625)
+    H = make_TFIM_H(hx,hz,N)
+    MPS = initialize_state(N,D)
+    if stochastic == true
+        renyivalue- VidalTEBD.stochasticTEBDwithRenyi!(MPS,H,T,Nt,loc,α)
+    else
+        renyivalue = VidalTEBD.TEBDwithRenyi!(MPS,H,T,Nt,loc,α)
+    end
+    x = 1:(Nt+1)
+    plot(x,renyivalue)
+    savefig(filename*".png")
+end
 
+function THIM_TEBD_energy(hx,hz,N,D,T,filename;stochastic =false)
+    Nt = round(Int64,T/0.0625)
+    H = make_TFIM_H(hx,hz,N)
+    MPS = initialize_state(N,D)
+    MPO = makeMPOforTHIM(hx,hz,N)
+    if stochastic == true
+        energyvalue = VidalTEBD.stochasticTEBD!(MPS,H,T,Nt,MPO = MPO)
+    else
+        energyvalue = VidalTEBD.TEBD!(MPS,H,T,Nt,MPO = MPO)
+    end
+    x = (1:(Nt+1))*0.0625
+    plot(x,real(energyvalue))
+    savefig(filename*".png")
+end
 
-#=
-MPS = initialize_state(N,D)
-MPO = makeMPOforTHIM(hx,hz,N)
-Profile.clear()
-energyvalue = @profile VidalTEBD.stochasticTEBD!(MPS,H,T,Nt,MPO = MPO)
-x = (1:(Nt+1))*0.0625
-plot(x,real(energyvalue))
-savefig(filename*".png")
-=#
+end #module
