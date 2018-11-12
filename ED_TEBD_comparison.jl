@@ -4,13 +4,13 @@ include("./ED.jl")
 using .VidalTEBD
 using .ED
 
-N = 4
-t = 1
+N = 8
+t = 30
 J = 1
-hx = 0.3
-hz = 0.4
-Nt = 10
-D = 100
+hx = 0.9045
+hz = 0.8090
+Nt = 3000
+D = 64
 
 #prepare the initial state used by Gil Rafael
 PS = zeros(Complex{Float64},2,N)
