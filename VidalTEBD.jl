@@ -341,6 +341,25 @@ function do_MPOonMPS(MPS::VidalMPS,MPO::MatrixProductOperator)
     GenericMPS(Gamma)
 end
 
+"""
+Given a VidalMPS, create a vector representation of that MPS using product states as basis
+"""
+function create_vector(MPS::VidalMPS)
+    D,D1,d,N = size(MPS.Gamma)
+    coeff = Array{Complex{Float64},1}(undef,d^N)
+    for i in 1:2^N
+        dit = string(i-1,base = d,pad=N)
+        M = MPS.Lambda[:,1]
+        for j in 1:N
+            index = parse(Int64,dit[N+1-j])+1
+            M = contract(M,[1],MPS.Gamma[:,:,index,j],[1])
+            M = contract(M,[1],Diagonal(MPS.Lambda[:,j+1]),[1])
+        end
+        coeff[i] = sum(M)
+    end
+    return coeff
+end
+
 function convert_to_Vidal(MPS::GenericMPS)
     MPS2 = convert_to_leftorthogonal(MPS)
     convert_to_Vidal(MPS2)

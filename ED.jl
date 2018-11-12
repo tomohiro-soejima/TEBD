@@ -9,12 +9,12 @@ index 2 = |-+>
 """
 function sparseIsing_Hamiltonian(J,hx,hz,N)
     H = zeros(Float64,2^N,2^N)
-    state = zeros(Float64,N)
+    state = zeros(Int64,N)
     I = Int64[]
     sizehint!(I,5*N)
     K = Int64[]
     sizehint!(K,5*N)
-    R = Float64[]
+    R = Complex{Float64}[]
     sizehint!(R,5*N)
     for i in 1:2^N
         convert_to_product(i,N,state)
@@ -36,7 +36,7 @@ function sparseIsing_Hamiltonian(J,hx,hz,N)
             push!(R,hx)
         end
     end
-    return sparse(I,K,R)
+    return Matrix(sparse(I,K,R))
 end
 
 """
@@ -73,8 +73,8 @@ example
 """
 function product_state_to_vector(PS)
     N = size(PS)[2]
-    state = zeros(Float64,N)
-    coeff = Array{Float64,1}(undef,2^N)
+    state = zeros(Int64,N)
+    coeff = Array{Complex{Float64},1}(undef,2^N)
     for i in 1:2^N
         convert_to_product(i,N,state)
         ci = 1
