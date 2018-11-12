@@ -33,7 +33,7 @@ function sparseIsing_Hamiltonian(J,hx,hz,N)
             new_index = spin_flip(j,i,N)
             push!(I,new_index)
             push!(K,i)
-            push!(R,hx)
+            push!(R,hx/2)
         end
     end
     return Matrix(sparse(I,K,R))
