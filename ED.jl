@@ -1,5 +1,8 @@
 module ED
 using SparseArrays
+using LinearAlgebra
+
+
 
 """
 construct a Hamiltonian matrix in Sz basis.
@@ -93,6 +96,26 @@ function Ising_time_evolve(J,hx,hz,PS,t)
     H = sparseIsing_Hamiltonian(J,hx,hz,N)
     U = exp(-im*H*t)
     return U*init_state
+end
+
+"""
+create a density matrix by tracing out the right R elements of the system. Local Hilbert size dimension is d.
+"""
+function create_density_matrix(state_vector,d,R)
+    println("This create_density_matrix code is wrong")
+    N = Int(log(d,size(state_vector)[1]))
+    ρ = Array{Complex{Float64},2}(undef,d^(N-R),d^(N-R))
+    for i in 1:d^R
+        @views vec = state_vector[d^(N-R)*(i-1)+1:d^(N-R)*i]
+        ρ += vec*vec'
+    end
+    return ρ
+end
+
+function do_svd(state_vector,d,R)
+    N = Int(log(d,size(state_vector)[1]))
+    G = reshape(state_vector,d^(N-R),d^R)
+    return svd(G)
 end
 
 end #module
