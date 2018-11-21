@@ -221,6 +221,21 @@ function update_evensite!(MPS::VidalMPS,U::NNQuadUnitary)
         onegate_onMPS!(MPS,U.OneSite[:,:,N],N)
     end
 end
+function update_traverse!(MPS::VidalMPS,U::NNQuadUnitary)
+    #first iteration of trotter gates
+    for loc in 1:N-1
+        onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
+        twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+    end
+    onegate_onMPS!(MPS,U.TwoSite[:,:,N],N)
+
+    #second iteration
+    onegate_onMPS!(MPS,U.TwoSite[:,:,N],N)
+    for loc in reverse(1:N-1)
+        twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+        onegate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+    end    
+end
 function makeNNQuadUnitary(H::NNQuadHamiltonian,del::Float64)
     d,d1,N = size(H.OneSite)
     OneSite = zeros(Complex{Float64},d,d,N)
