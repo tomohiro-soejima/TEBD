@@ -82,6 +82,7 @@ function onegate_onMPS1!(MPS::VidalMPS,U,loc)
 end
 
 function onegate_onMPS2!(MPS::VidalMPS,U::Array{Complex{Float64},2},loc::Int64)
+    #faster than MPS1!
     D,D2,d,N = size(MPS.Gamma)
     R = permutedims(reshape(view(MPS.Gamma,:,:,:,loc),D^2,d),(2,1))
     MPS.Gamma[:,:,:,loc] = reshape(PermutedDimsArray(U*R,(2,1)),D,D,d)
@@ -176,17 +177,49 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     Gamma2[:,:,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
 end
 function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
+    #initializing for different options
+    operator != nothing ? expvalues = zeros(Complex{Float64},N+1,size(H.OneSite)[3]) : false
     if operator != nothing
-        return getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,operator)
-    elseif α != nothing
-        return TEBDwithRenyi!(MPS,H,T,N,loc,α)
-    elseif MPO != nothing
-        return TEBDwithMPO!(MPS,H,T,N,MPO)
-    else
-        return TEBD_simple!(MPS,H,T,N)
+        expvalues = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
+        for j in 1:N_site
+            expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+        end
+    end
+    if α != nothing
+        renyivalue = zeros(Float64,N+1)
+        renyivalue[1] = getRenyi(MPS,loc,α)
+    end
+    if MPO != nothing
+        MPOvalue = zeros(Complex{Float64},N+1)
+        MPOvalue[1] = getMPOexpvalue(MPS,MPO)
+    end
+
+    #initalizing the unitary operators
+    del = T/N
+    U = makeNNQuadUnitary(H,del::Float64)
+    for i in 1:N
+        try
+            update_oddsite!(MPS,U)
+            update_evensite!(MPS,U)
+        catch y
+            println("This happened after ",i," th time step")
+            error(y)
+        end
+
+        if operator != nothing
+            for j in 1:N_site
+                expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+            end
+        end
+        α != nothing ? renyivalue[i+1] = getRenyi(MPS,loc,α) ? false
+        MPO != nothing ? MPOvalue[i+1] = getMPOexpvalue(MPS,MPO) : false
+
     end
 end
 
+"""
+deprecated
+"""
 function TEBD_simple!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
     del = T/N
     U = makeNNQuadUnitary(H,del::Float64)
@@ -234,7 +267,22 @@ function update_traverse!(MPS::VidalMPS,U::NNQuadUnitary)
     for loc in reverse(1:N-1)
         twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
         onegate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
-    end    
+    end
+end
+function stochastic_update_traverse!(MPS::VidalMPS,U::NNQuadUnitary)
+    #first iteration of trotter gates
+    for loc in 1:N-1
+        onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
+        stochastic_twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+    end
+    onegate_onMPS!(MPS,U.TwoSite[:,:,N],N)
+
+    #second iteration
+    onegate_onMPS!(MPS,U.TwoSite[:,:,N],N)
+    for loc in reverse(1:N-1)
+        stochastic_twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+        onegate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+    end
 end
 function makeNNQuadUnitary(H::NNQuadHamiltonian,del::Float64)
     d,d1,N = size(H.OneSite)
@@ -270,6 +318,9 @@ function makeNNQuadH(H::NNSpinHalfHamiltonian)
     TwoSite = reshape(PermutedDimsArray(transpose(TwoSite2)*TwoSiteOpVec,(2,1)),4,4,N)
     NNQuadHamiltonian(copy(OneSite),copy(TwoSite))
 end
+"""
+deprecated
+"""
 function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     d,d2,N_site = size(H.OneSite)
     del = T/N
@@ -293,7 +344,9 @@ function getTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,A)
     end
     expvalue
 end
-
+"""
+deprecated
+"""
 function TEBDwithRenyi!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,loc,α)
     d,d2,N_site = size(H.OneSite)
     del = T/N
@@ -307,7 +360,9 @@ function TEBDwithRenyi!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,loc,α)
     end
     return renyivalue
 end
-
+"""
+deprecated
+"""
 function TEBDwithMPO!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,MPO::MatrixProductOperator)
     d,d2,N_site = size(H.OneSite)
     del = T/N
