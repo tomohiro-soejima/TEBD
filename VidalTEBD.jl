@@ -211,10 +211,14 @@ function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = n
                 expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
             end
         end
-        α != nothing ? renyivalue[i+1] = getRenyi(MPS,loc,α) ? false
+        α != nothing ? renyivalue[i+1] = getRenyi(MPS,loc,α) : false
         MPO != nothing ? MPOvalue[i+1] = getMPOexpvalue(MPS,MPO) : false
-
     end
+    result = Dict()
+    operator != nothing ? result["expvalue"] = expvalue : false
+    α != nothing ? result["renyivalue"] = renyivalue : false
+    MPO != nothing ? result["MPOvalue"] = MPOvalue : false
+    return result
 end
 
 function TEBD_traverse!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
@@ -240,7 +244,7 @@ function TEBD_traverse!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothin
     U = makeNNQuadUnitary(H,del::Float64)
     for i in 1:N
         try
-            update_traverse(MPS,U)
+            update_traverse!(MPS,U)
         catch y
             println("This happened after ",i," th time step")
             error(y)
@@ -251,10 +255,15 @@ function TEBD_traverse!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothin
                 expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
             end
         end
-        α != nothing ? renyivalue[i+1] = getRenyi(MPS,loc,α) ? false
+        α != nothing ? renyivalue[i+1] = getRenyi(MPS,loc,α) : false
         MPO != nothing ? MPOvalue[i+1] = getMPOexpvalue(MPS,MPO) : false
-
     end
+
+    result = Dict()
+    operator != nothing ? result["expvalue"] = expvalue : false
+    α != nothing ? result["renyivalue"] = renyivalue : false
+    MPO != nothing ? result["MPOvalue"] = MPOvalue : false
+    return result
 end
 
 """
@@ -295,33 +304,35 @@ function update_evensite!(MPS::VidalMPS,U::NNQuadUnitary)
     end
 end
 function update_traverse!(MPS::VidalMPS,U::NNQuadUnitary)
+    D,D2,d,N = size(MPS.Gamma)
     #first iteration of trotter gates
     for loc in 1:N-1
         onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
         twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
     end
-    onegate_onMPS!(MPS,U.TwoSite[:,:,N],N)
+    onegate_onMPS!(MPS,U.OneSite[:,:,N],N)
 
     #second iteration
-    onegate_onMPS!(MPS,U.TwoSite[:,:,N],N)
+    onegate_onMPS!(MPS,U.OneSite[:,:,N],N)
     for loc in reverse(1:N-1)
         twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
-        onegate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+        onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
     end
 end
 function stochastic_update_traverse!(MPS::VidalMPS,U::NNQuadUnitary)
+    D,D2,d,N = size(MPS.Gamma)
     #first iteration of trotter gates
     for loc in 1:N-1
         onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
         stochastic_twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
     end
-    onegate_onMPS!(MPS,U.TwoSite[:,:,N],N)
+    onegate_onMPS!(MPS,U.OneSite[:,:,N],N)
 
     #second iteration
-    onegate_onMPS!(MPS,U.TwoSite[:,:,N],N)
+    onegate_onMPS!(MPS,U.OneSite[:,:,N],N)
     for loc in reverse(1:N-1)
         stochastic_twogate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
-        onegate_onMPS!(MPS,U.TwoSite[:,:,loc],loc)
+        onegate_onMPS!(MPS,U.OneSite[:,:,loc],loc)
     end
 end
 function makeNNQuadUnitary(H::NNQuadHamiltonian,del::Float64)
@@ -620,15 +631,48 @@ function getMPOexpvalue(MPS::VidalMPS,MPO::MatrixProductOperator)
 end
 
 function stochasticTEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
+    #initializing for different options
+    operator != nothing ? expvalues = zeros(Complex{Float64},N+1,size(H.OneSite)[3]) : false
     if operator != nothing
-        return getStochasticTEBDexpvalue!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N,operator)
-    elseif α != nothing
-        return stochasticTEBDwithRenyi!(MPS,H,T,N,loc,α)
-    elseif MPO != nothing
-        return stochasticTEBDwithMPO!(MPS,H,T,N,MPO)
-    else
-        return stochasticTEBD_simple!(MPS,H,T,N)
+        expvalues = zeros(Complex{Float64},N+1,size(H.OneSite)[3])
+        for j in 1:N_site
+            expvalue[1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+        end
     end
+    if α != nothing
+        renyivalue = zeros(Float64,N+1)
+        renyivalue[1] = getRenyi(MPS,loc,α)
+    end
+    if MPO != nothing
+        MPOvalue = zeros(Complex{Float64},N+1)
+        MPOvalue[1] = getMPOexpvalue(MPS,MPO)
+    end
+
+    #initalizing the unitary operators
+    del = T/N #it traverses twice
+    U = makeNNQuadUnitary(H,del::Float64)
+    for i in 1:N
+        try
+            stochastic_update_oddsite!(MPS,U)
+            stochastic_update_evensite!(MPS,U)
+        catch y
+            println("This happened after ",i," th time step")
+            error(y)
+        end
+
+        if operator != nothing
+            for j in 1:N_site
+                expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
+            end
+        end
+        α != nothing ? renyivalue[i+1] = getRenyi(MPS,loc,α) : false
+        MPO != nothing ? MPOvalue[i+1] = getMPOexpvalue(MPS,MPO) : false
+    end
+    result = Dict()
+    operator != nothing ? result["expvalue"] = expvalue : false
+    α != nothing ? result["renyivalue"] = renyivalue : false
+    MPO != nothing ? result["MPOvalue"] = MPOvalue : false
+    return result
 end
 
 function stochasticTEBD_traverse!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
@@ -654,7 +698,7 @@ function stochasticTEBD_traverse!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operato
     U = makeNNQuadUnitary(H,del::Float64)
     for i in 1:N
         try
-            stochastic_supdate_traverse(MPS,U)
+            stochastic_update_traverse!(MPS,U)
         catch y
             println("This happened after ",i," th time step")
             error(y)
@@ -665,10 +709,14 @@ function stochasticTEBD_traverse!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operato
                 expvalue[i+1,j] = onesite_expvalue(MPS,A[:,:,j],j)
             end
         end
-        α != nothing ? renyivalue[i+1] = getRenyi(MPS,loc,α) ? false
+        α != nothing ? renyivalue[i+1] = getRenyi(MPS,loc,α) : false
         MPO != nothing ? MPOvalue[i+1] = getMPOexpvalue(MPS,MPO) : false
-
     end
+    result = Dict()
+    operator != nothing ? result["expvalue"] = expvalue : false
+    α != nothing ? result["renyivalue"] = renyivalue : false
+    MPO != nothing ? result["MPOvalue"] = MPOvalue : false
+    return result
 end
 
 function stochasticTEBD_simple!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N)
