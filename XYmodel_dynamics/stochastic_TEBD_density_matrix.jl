@@ -33,7 +33,10 @@ function getRenyi(MPS,cut_position::Vector{Int},alpha)
         error("the value for alpha must be 2. Other methods for calculating Renyi entropy for double cuts have not been implemented")
     end
 
-    # I need to figure this part out. Good luck!
+    rho1 = Diagonal(MPS.Lambda[left])*Diagonal(MPS.Lambda[left])
+    rho2 = Diagonal(MPS.Lambda[right+1])*Diagonal(MPS.Lambda[right+1])
+
+    return -log(tr(rho1*rho1)*tr(rho2*rho2)) #prove this!
 end
 
 function calculate_overlap(MPS1,MPS2,cut_position::Vector{Int})
