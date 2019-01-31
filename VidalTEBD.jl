@@ -886,20 +886,19 @@ function choose1(list::Array{Float64,1})
     return i
 end
 
-function stochasticTEBD_multicopy(initial_MPS,number_of_copies,Time,Nt,number_of_data_points))
+function stochasticTEBD_multicopy(initial_MPS,Hamiltonian,number_of_copies,Time,Nt,number_of_data_points)
     MPS_list = Array{VidalMPS,1}(undef,number_of_copies)
     for index in 1:number_of_copies
-        MPS_list[i] = initial_MPS
+        MPS_list[index] = initial_MPS
     end
 
-    dt = T/Nt
     raw_Renyi_list = zeros(Float64,number_of_copies)
     raw_Renyi = zeros(Float64,number_of_data_points)
     mutual_Renyi = zeros(Float64,number_of_data_points)
     for iteration in 1:number_of_data_points
         for index in 1:number_of_copies
-            stochasticTEBD!(MPS_list[i],H,T,Nt/number_of_data_points)
-            raw_Renyi[i] = getRenyi(MPS,(left_cut,right_cut),alpha) #define this
+            stochasticTEBD!(MPS_list[index],Hamiltonian,Time/number_of_data_points,Nt/number_of_data_points)
+            raw_Renyi[index] = getRenyi(MPS,(left_cut,right_cut),alpha) #define this
         end
 
         raw_Renyi[iteration+1] = sum(raw_Renyi_list)
