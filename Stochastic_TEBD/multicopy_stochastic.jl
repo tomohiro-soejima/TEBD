@@ -1,13 +1,8 @@
 println("including VidalTEBD.jl")
 @time include("../VidalTEBD.jl")
 using .VidalTEBD
-using Plots
-using Printf
-using Profile
-using ProfileView
+using PyPlot
 using LinearAlgebra
-using Traceur
-using BenchmarkTools
 println("finished including different packages")
 
 
@@ -53,7 +48,7 @@ D = 4
 T = 10pi
 Nt = 100
 number_of_data_points = 20
-number_of_copies = 20
+number_of_copies = 100
 
 filename = "TFIM_renyi_multicopy_1.png"
 
@@ -61,3 +56,8 @@ println("creating the MPS")
 @time MPS = initialize_state(N,D)
 println("calculating the Renyi entropy")
 @time data_list = VidalTEBD.stochasticTEBD_multicopy(MPS,H,number_of_copies,T,Nt,number_of_data_points,cut_position)
+
+println("plotting figures")
+figure()
+@time plot((0:number_of_data_points)*T/number_of_data_points,data_list[1])
+@time savefig(filename)

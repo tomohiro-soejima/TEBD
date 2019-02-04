@@ -929,7 +929,13 @@ function get_eigvals_squared(MPS::VidalMPS,cut_position::Vector{Int},alpha::Int)
 end
 
 function getRenyi(MPS::VidalMPS,cut_position::Vector{Int},alpha::Int)
-    return -log(get_eigvals_squared(MPS,cut_position,alpha))
+    eigs_squared = get_eigvals_squared(MPS,cut_position,alpha)
+
+    if eigs_squared<0
+        println("eigs_squared = ", eigs_squared)
+    end
+
+    return -log(eigs_squared)
 end
 
 function calculate_overlap(MPS1,MPS2,cut_position::Vector{Int})
@@ -954,7 +960,7 @@ function calculate_overlap(MPS1,MPS2,cut_position::Vector{Int})
 
     overlap =  tr(T)
     if !(0<norm(overlap)<1)
-        println("mutual_renyi = ",overlap)
+        println("overlap = ",overlap)
     end
 
     return overlap
