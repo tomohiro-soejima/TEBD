@@ -1,4 +1,5 @@
-include("../VidalTEBD.jl")
+println("including VidalTEBD.jl")
+@time include("../VidalTEBD.jl")
 using .VidalTEBD
 using Plots
 using Printf
@@ -7,20 +8,16 @@ using ProfileView
 using LinearAlgebra
 using Traceur
 using BenchmarkTools
-
+println("finished including different packages")
 
 
 #initialize
 N = 16
+cut_position = [7,10]
 #these values ensure chaos, following Gil Rafael's convention
 hx = 0.9045
 hz = 0.8090
 
-D = 16
-T = 4pi
-Nt = round(Int64,T/0.0625)
-number_of_data_points = 20
-number_of_copies = 10
 
 #make Ising Hamiltonian
 function make_TFIM_H(hx,hz,N)
@@ -32,7 +29,8 @@ function make_TFIM_H(hx,hz,N)
     H = VidalTEBD.NNSpinHalfHamiltonian(OneSite,TwoSite)
     VidalTEBD.makeNNQuadH(H)
 end
-H = make_TFIM_H(hx,hz,N)
+println("creating the Hamiltonian")
+@time H = make_TFIM_H(hx,hz,N)
 
 #make all up product state
 #there is a mistake in the paper. how should I fix it?
@@ -50,27 +48,16 @@ function initialize_state(N,D)
     VidalTEBD.make_productVidalMPS(PS,D)
 end
 
-filename = "TFIM_TEBD_Renyi_D_64_2"
 
-MPS = initialize_state(N,D)
-data_list = @profile VidalTEBD.stochasticTEBD_multicopy(MPS,H,number_of_copies,T,Nt,number_of_data_points)
+D = 4
+T = 10pi
+Nt = 100
+number_of_data_points = 20
+number_of_copies = 20
 
-#=
-ProfileView.view()
-x = (1:(Nt+1))*0.0625
-plot(x,renyivalue)
-savefig(filename*".png")
+filename = "TFIM_renyi_multicopy_1.png"
 
-filename = "TFIM_TEBD_Renyi_D_64_stochastic_2"
-=#
-
-
-#=
-MPS = initialize_state(N,D)
-Profile.clear()
-renyivalue = @profile VidalTEBD.stochasticTEBDwithRenyi!(MPS,H,T,Nt,32,2)
-ProfileView.view()
-x = (1:(Nt+1))*0.0625
-plot(x,renyivalue)
-savefig(filename*".png")
-=#
+println("creating the MPS")
+@time MPS = initialize_state(N,D)
+println("calculating the Renyi entropy")
+@time data_list = VidalTEBD.stochasticTEBD_multicopy(MPS,H,number_of_copies,T,Nt,number_of_data_points,cut_position)

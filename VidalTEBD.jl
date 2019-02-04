@@ -599,7 +599,7 @@ function normalization_test(MPS::VidalMPS,index,side)
     a
 end
 
-function getRenyi(MPS::VidalMPS,loc,α)
+function getRenyi(MPS::VidalMPS,loc::Int,α::Int)
     #=
     get αth Renyi entropy for a cut between site loc and loc+1
     =#
@@ -886,70 +886,87 @@ function choose1(list::Array{Float64,1})
     return i
 end
 
-function stochasticTEBD_multicopy(initial_MPS,Hamiltonian,number_of_copies,Time,Nt,number_of_data_points)
+function stochasticTEBD_multicopy(initial_MPS,Hamiltonian,number_of_copies,Time,Nt,number_of_data_points,cut_position)
     MPS_list = Array{VidalMPS,1}(undef,number_of_copies)
+    left_cut = cut_position[1]
+    right_cut = cut_position[2]
     for index in 1:number_of_copies
-        MPS_list[index] = initial_MPS
+        MPS_list[index] = VidalMPS(deepcopy(initial_MPS.Gamma),deepcopy(initial_MPS.Lambda))
     end
 
-    raw_Renyi_list = zeros(Float64,number_of_copies)
-    raw_Renyi = zeros(Float64,number_of_data_points)
-    mutual_Renyi = zeros(Float64,number_of_data_points)
+    eigs_squared_list = zeros(Float64,number_of_copies)
+    eigs_squared = zeros(Float64,number_of_data_points+1)
+    mutual_overlap = zeros(Float64,number_of_data_points+1)
     for iteration in 1:number_of_data_points
         for index in 1:number_of_copies
-            stochasticTEBD!(MPS_list[index],Hamiltonian,Time/number_of_data_points,Nt/number_of_data_points)
-            raw_Renyi[index] = getRenyi(MPS,(left_cut,right_cut),alpha) #define this
+            stochasticTEBD_traverse!(MPS_list[index],Hamiltonian,Time/number_of_data_points,Nt/number_of_data_points)
+            eigs_squared_list[index] = get_eigvals_squared(MPS_list[index],[left_cut,right_cut],2)
         end
 
-        raw_Renyi[iteration+1] = sum(raw_Renyi_list)
-        mutual_Renyi = calculate_mutual_renyi2(MPS_list,[left_cut,right_cut])
+        eigs_squared[iteration+1] = sum(eigs_squared_list)
+        mutual_overlap[iteration+1] = calculate_mutual_overlap(MPS_list,[left_cut,right_cut])
     end
 
-    Renyi_entropy = 1/number_of_copies*raw_Renyi + 1/(number_of_copies^2)*mutual_Renyi
-    Renyi_entropy[1] = getRenyi(MPS,[left_cut,right_cut],alpha) # this is the fastest way to calculate the Renyi entropy before any operation is done
+    Renyi_entropy = -log.(1/number_of_copies^2 .*eigs_squared + 1/(number_of_copies^2).*mutual_overlap)
+    Renyi_entropy[1] = getRenyi(initial_MPS,[left_cut,right_cut],2) # this is the fastest way to calculate the Renyi entropy before any operation is done
+    eigs_squared[1] = get_eigvals_squared(initial_MPS,[left_cut,right_cut],2)*number_of_copies
+    mutual_overlap[1] = get_eigvals_squared(initial_MPS,[left_cut,right_cut],2)*(number_of_copies^2-number_of_copies)
 
-    return Renyi_entropy,raw_Renyi,mutual_Renyi
+    return Renyi_entropy,eigs_squared,mutual_overlap,MPS_list
 end
-
-function getRenyi(MPS,cut_position::Vector{Int},alpha)
+function get_eigvals_squared(MPS::VidalMPS,cut_position::Vector{Int},alpha::Int)
     if alpha != 2
         error("the value for alpha must be 2. Other methods for calculating Renyi entropy for double cuts have not been implemented")
     end
 
-    rho1 = Diagonal(MPS.Lambda[left])*Diagonal(MPS.Lambda[left])
-    rho2 = Diagonal(MPS.Lambda[right+1])*Diagonal(MPS.Lambda[right+1])
+    left = cut_position[1]
+    right = cut_position[2]
 
-    return -log(tr(rho1*rho1)*tr(rho2*rho2)) #prove this!
+    rho1 = Diagonal(MPS.Lambda[:,left])*Diagonal(MPS.Lambda[:,left])
+    rho2 = Diagonal(MPS.Lambda[:,right+1])*Diagonal(MPS.Lambda[:,right+1])
+
+    return tr(rho1*rho1)*tr(rho2*rho2) #prove this!
+end
+
+function getRenyi(MPS::VidalMPS,cut_position::Vector{Int},alpha::Int)
+    return -log(get_eigvals_squared(MPS,cut_position,alpha))
 end
 
 function calculate_overlap(MPS1,MPS2,cut_position::Vector{Int})
-    D,D1,d,N = size(MPS1)
+    #this sometimes give a poor overlap with itself. Why? Is this algorithm not correct?
+    D,D1,d,N = size(MPS1.Gamma)
     T = Array{Complex{Float64},2}(undef,D,D)
-    T2 = Array{Complex{Float64},2}(undef,D,d,D)
+    T2 = Array{Complex{Float64},3}(undef,D,d,D)
     left = cut_position[1]
     right= cut_position[2]
     U1 = contract(Diagonal(MPS1.Lambda[:,left]),[2],MPS1.Gamma[:,:,:,left],[1])
-    U2 = contract(Diagonal(MPS2.Lambda[:,left]),[2],MPS1.Gamma[:,:,:,right],[1])
-    T[:,:] = contract(conjugate.(U1),[1,3],U2,[1,3]) #dim(D,D)
+    U2 = contract(Diagonal(MPS2.Lambda[:,left]),[2],MPS2.Gamma[:,:,:,left],[1])
+    T[:,:] = contract(conj.(U1),[1,3],U2,[1,3]) #dim(D,D)
     for index in (left+1):right
-        U1[:,:] = contract(Diagonal(MPS1.Lambda[:,index]),[2],MPS1.Gamma[:,:,:,index],[1])
-        U2[:,:] = contract(Diagonal(MPS2.Lambda[:,index]),[2],MPS1.Gamma[:,:,:,index],[1])
-        T2[:,:] = contract(conjugate(U1),[1],T,[1])#dim(D,d,D)
-        T[:,:] = contract(T,[2,3],U2,[1,2]) #dim(D,D)
+        U1[:,:,:] = contract(Diagonal(MPS1.Lambda[:,index]),[2],MPS1.Gamma[:,:,:,index],[1])
+        U2[:,:,:] = contract(Diagonal(MPS2.Lambda[:,index]),[2],MPS2.Gamma[:,:,:,index],[1])
+        T2[:,:,:] = contract(conj(U1),[1],T,[1])#dim(D,d,D)
+        T[:,:] = contract(T2,[2,3],U2,[3,1]) #dim(D,D)
     end
 
     T[:,:] = contract(Diagonal(MPS1.Lambda[:,right+1]),[1],T,[1])#dim(D,D)
     T[:,:] = contract(T,[2],Diagonal(MPS2.Lambda[:,right+1]),[1])#dim(D,D)
 
-    return tr(T)
+    overlap =  tr(T)
+    if !(0<norm(overlap)<1)
+        println("mutual_renyi = ",overlap)
+    end
+
+    return overlap
+
 end
 
-function calculate_mutual_renyi2(MPS_list,cut_position::Vector{Int})
+function calculate_mutual_overlap(MPS_list,cut_position::Vector{Int})
     M = length(MPS_list)
     values = Array{Float64,2}(undef,M,M)
     for raw in 1:M
         for column in raw+1:M
-            value[raw,column]= norm(calculate_overlap(MPS_list[raw],MPS[column],cut_position))^2
+            values[raw,column]= norm(calculate_overlap(MPS_list[raw],MPS_list[column],cut_position))^2
         end
     end
 
