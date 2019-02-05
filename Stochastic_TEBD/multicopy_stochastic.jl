@@ -48,7 +48,7 @@ D = 4
 T = 10pi
 Nt = 100
 number_of_data_points = 20
-number_of_copies = 100
+number_of_copies = 20
 
 filename = "TFIM_renyi_multicopy_1.png"
 

@@ -939,27 +939,32 @@ function getRenyi(MPS::VidalMPS,cut_position::Vector{Int},alpha::Int)
 end
 
 function calculate_overlap(MPS1,MPS2,cut_position::Vector{Int})
-    #this sometimes give a poor overlap with itself. Why? Is this algorithm not correct?
+    #this algorithm is not optimized. It runs ot O(chi^8) time,whereas the optimal algorithm can run at O(chi^4).
     D,D1,d,N = size(MPS1.Gamma)
-    T = Array{Complex{Float64},2}(undef,D,D)
-    T2 = Array{Complex{Float64},3}(undef,D,d,D)
+    T = Array{Complex{Float64},4}(undef,D,D,D,D)
+    T2 = Array{Complex{Float64},5}(undef,D,d,D,D,D)
     left = cut_position[1]
     right= cut_position[2]
     U1 = contract(Diagonal(MPS1.Lambda[:,left]),[2],MPS1.Gamma[:,:,:,left],[1])
     U2 = contract(Diagonal(MPS2.Lambda[:,left]),[2],MPS2.Gamma[:,:,:,left],[1])
-    T[:,:] = contract(conj.(U1),[1,3],U2,[1,3]) #dim(D,D)
+    T[:,:,:,:] = contract(conj.(U1),[3],U2,[3]) #dim(D,D,D,D)
     for index in (left+1):right
         U1[:,:,:] = contract(Diagonal(MPS1.Lambda[:,index]),[2],MPS1.Gamma[:,:,:,index],[1])
         U2[:,:,:] = contract(Diagonal(MPS2.Lambda[:,index]),[2],MPS2.Gamma[:,:,:,index],[1])
-        T2[:,:,:] = contract(conj(U1),[1],T,[1])#dim(D,d,D)
-        T[:,:] = contract(T2,[2,3],U2,[3,1]) #dim(D,D)
+        T2[:,:,:,:,:] = contract(conj(U1),[1],T,[2])#dim(D,d,D,D,D)
+        T[:,:,:,:] = PermutedDimsArray(contract(T2,[2,5],U2,[3,1]),(2,1,3,4)) #dim(D,D)
     end
 
-    T[:,:] = contract(Diagonal(MPS1.Lambda[:,right+1]),[1],T,[1])#dim(D,D)
-    T[:,:] = contract(T,[2],Diagonal(MPS2.Lambda[:,right+1]),[1])#dim(D,D)
+    T[:,:,:,:] = contract(Diagonal(MPS1.Lambda[:,right+1]),[1],T,[2])#dim(D,D,D,D)
+    T[:,:,:,:] = contract(T,[4],Diagonal(MPS2.Lambda[:,right+1]),[1])#dim(1)
 
-    overlap =  tr(T)
-    if !(0<norm(overlap)<1)
+    Tp = deepcopy(T)
+
+    overlap = contract(T,[1,2,3,4],conj.(Tp),[1,2,3,4])[1]
+
+    overlap = convert(Float64,overlap)
+
+    if !(0<overlap<1)
         println("overlap = ",overlap)
     end
 
@@ -972,11 +977,18 @@ function calculate_mutual_overlap(MPS_list,cut_position::Vector{Int})
     values = Array{Float64,2}(undef,M,M)
     for raw in 1:M
         for column in raw+1:M
-            values[raw,column]= norm(calculate_overlap(MPS_list[raw],MPS_list[column],cut_position))^2
+            values[raw,column]= calculate_overlap(MPS_list[raw],MPS_list[column],cut_position)
+            if isnan(values[raw,column])
+                println("overlap = ", values[raw,column])
+            end
         end
     end
 
     mutual_renyi = 2*sum(values) # a factor of two because we only calculated half of the matrix
+
+    if isnan(mutual_renyi)
+        print(values)
+    end
 
     return mutual_renyi
 end
