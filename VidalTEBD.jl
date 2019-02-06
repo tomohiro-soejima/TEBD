@@ -6,6 +6,7 @@ export contract
 
 using BenchmarkTools
 using LinearAlgebra
+using Random
 
 GammaMat = Array{Complex{Float64},4}
 
@@ -925,7 +926,11 @@ function get_eigvals_squared(MPS::VidalMPS,cut_position::Vector{Int},alpha::Int)
     rho1 = Diagonal(MPS.Lambda[:,left])*Diagonal(MPS.Lambda[:,left])
     rho2 = Diagonal(MPS.Lambda[:,right+1])*Diagonal(MPS.Lambda[:,right+1])
 
-    return tr(rho1*rho1)*tr(rho2*rho2) #prove this!
+    eigvals_squared = tr(rho1*rho1)*tr(rho2*rho2) #prove this!
+    if eigvals_squared<0
+        println("eigvals_squared is less than 0")
+    end
+    return eigvals_squared
 end
 
 function getRenyi(MPS::VidalMPS,cut_position::Vector{Int},alpha::Int)
@@ -964,8 +969,10 @@ function calculate_overlap(MPS1,MPS2,cut_position::Vector{Int})
 
     overlap = convert(Float64,overlap)
 
-    if !(0<overlap<1)
+    if 0>overlap
         println("overlap = ",overlap)
+    elseif overlap>1
+        println("overlap = ", overlap)
     end
 
     return overlap
@@ -974,11 +981,11 @@ end
 
 function calculate_mutual_overlap(MPS_list,cut_position::Vector{Int})
     M = length(MPS_list)
-    values = Array{Float64,2}(undef,M,M)
+    values = zeros(Float64,M,M)
     for raw in 1:M
         for column in raw+1:M
             values[raw,column]= calculate_overlap(MPS_list[raw],MPS_list[column],cut_position)
-            if isnan(values[raw,column])
+            if values[raw,column]>1
                 println("overlap = ", values[raw,column])
             end
         end
@@ -987,7 +994,12 @@ function calculate_mutual_overlap(MPS_list,cut_position::Vector{Int})
     mutual_renyi = 2*sum(values) # a factor of two because we only calculated half of the matrix
 
     if isnan(mutual_renyi)
-        print(values)
+        println("there are NaN in mutual_renyi")
+    end
+
+    if mutual_renyi>M^2
+        println("mutual_renyi = ",mutual_renyi)
+        println("filtered values = ", values[values.>1])
     end
 
     return mutual_renyi

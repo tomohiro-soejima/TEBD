@@ -3,8 +3,10 @@ println("including VidalTEBD.jl")
 using .VidalTEBD
 using PyPlot
 using LinearAlgebra
+using Random
 println("finished including different packages")
 
+Random.seed!(5545343)
 
 #initialize
 N = 16
