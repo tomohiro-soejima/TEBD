@@ -6,11 +6,10 @@ using LinearAlgebra
 using Random
 println("finished including different packages")
 
-Random.seed!(5545343)
 
 #initialize
-N = 16
-cut_position = [7,10]
+N = 64
+cut_position = [25,40]
 #these values ensure chaos, following Gil Rafael's convention
 hx = 0.9045
 hz = 0.8090
@@ -47,19 +46,33 @@ end
 
 
 D = 4
-T = 10pi
-Nt = 100
+T = 20pi
+Nt = round(Int64,T/0.0625)
 number_of_data_points = 20
-number_of_copies = 20
+number_of_copies = [1,1,4,16,64]
+data_list = zeros(Float64,number_of_data_points+1,5)
 
-filename = "TFIM_renyi_multicopy_1.png"
 
-println("creating the MPS")
-@time MPS = initialize_state(N,D)
-println("calculating the Renyi entropy")
-@time data_list = VidalTEBD.stochasticTEBD_multicopy(MPS,H,number_of_copies,T,Nt,number_of_data_points,cut_position)
+for (index, value) in enumerate(number_of_copies)
+    println("creating the MPS")
+    @time global MPS = initialize_state(N,D)
+    println("calculating the Renyi entropy with $value copies")
+    Random.seed!(5545343)
+    @time data_list[:,index] = VidalTEBD.stochasticTEBD_multicopy(MPS,H,value,T,Nt,number_of_data_points,cut_position)[1]
+end
+
+#filename = "TFIM_renyi_multicopy_5.png"
+
 
 println("plotting figures")
 figure()
-@time plot((0:number_of_data_points)*T/number_of_data_points,data_list[1])
-@time savefig(filename)
+for (index,value) in enumerate(number_of_copies)
+    @time plot((0:number_of_data_points)*T/number_of_data_points,data_list[:,index],marker="o",label = "#copies = $value")
+end
+xlabel("Time")
+ylabel("Renyi 2 entropy (base e)")
+axhline(log(4^2),color="k")
+axhline(log(2^16),color="k")
+legend()
+title("D = $D")
+#@time savefig(filename)
