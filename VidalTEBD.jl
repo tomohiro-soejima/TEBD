@@ -889,11 +889,13 @@ end
 
 function stochasticTEBD_multicopy(initial_MPS,Hamiltonian,number_of_copies,Time,Nt,number_of_data_points,cut_position)
     MPS_list = Array{VidalMPS,1}(undef,number_of_copies)
+    D,D2,d,N = size(initial_MPS.Gamma)
     left_cut = cut_position[1]
     right_cut = cut_position[2]
     for index in 1:number_of_copies
         MPS_list[index] = VidalMPS(deepcopy(initial_MPS.Gamma),deepcopy(initial_MPS.Lambda))
     end
+    #preallocate arrays
     values = zeros(Float64,number_of_copies,number_of_copies)
 
     eigs_squared_list = zeros(Float64,number_of_copies)
@@ -951,6 +953,7 @@ function calculate_overlap(MPS1,MPS2,cut_position::Vector{Int})
     T2 = Array{Complex{Float64},5}(undef,D,d,D,D,D)
     left = cut_position[1]
     right= cut_position[2]
+
     U1 = contract(Diagonal(MPS1.Lambda[:,left]),[2],MPS1.Gamma[:,:,:,left],[1])
     U2 = contract(Diagonal(MPS2.Lambda[:,left]),[2],MPS2.Gamma[:,:,:,left],[1])
     T[:,:,:,:] = contract(conj.(U1),[3],U2,[3]) #dim(D,D,D,D)
@@ -964,9 +967,53 @@ function calculate_overlap(MPS1,MPS2,cut_position::Vector{Int})
     T[:,:,:,:] = contract(Diagonal(MPS1.Lambda[:,right+1]),[1],T,[2])#dim(D,D,D,D)
     T[:,:,:,:] = contract(T,[4],Diagonal(MPS2.Lambda[:,right+1]),[1])#dim(1)
 
-    Tp = deepcopy(T)
+    overlap = contract(T,[1,2,3,4],conj.(T),[1,2,3,4])[1]
 
-    overlap = contract(T,[1,2,3,4],conj.(Tp),[1,2,3,4])[1]
+    overlap = convert(Float64,overlap)
+
+    if 0>overlap
+        println("overlap = ",overlap)
+    elseif overlap>1
+        println("overlap = ", overlap)
+    end
+
+    return overlap
+
+end
+"""
+preallocated version of calculate_overlap. This however, doesn't actually make things faster
+"""
+function calculate_overlap!(MPS1,MPS2,cut_position::Vector{Int},T,T2,U1,U2)
+    #this algorithm is not optimized. It runs ot O(chi^8) time,whereas the optimal algorithm can run at O(chi^4).
+    D,D1,d,N = size(MPS1.Gamma)
+    if size(T) != (D,D,D,D)
+        println("the dimensions of T does not match")
+    end
+    if size(T2) != (D,d,D,D,D)
+        println("the dimensions of T2 does not match")
+    end
+    if size(U1) != (D,D,d)
+        println("the dimensions of U1 does not match")
+    end
+    if size(U2) != (D,D,d)
+        println("the dimensions of U2 does not match")
+    end
+    left = cut_position[1]
+    right= cut_position[2]
+    U1[:,:,:] = contract(Diagonal(MPS1.Lambda[:,left]),[2],MPS1.Gamma[:,:,:,left],[1])
+    U2[:,:,:] = contract(Diagonal(MPS2.Lambda[:,left]),[2],MPS2.Gamma[:,:,:,left],[1])
+    T[:,:,:,:] = contract(conj.(U1),[3],U2,[3]) #dim(D,D,D,D)
+    for index in (left+1):right
+        U1[:,:,:] = contract(Diagonal(MPS1.Lambda[:,index]),[2],MPS1.Gamma[:,:,:,index],[1])
+        U2[:,:,:] = contract(Diagonal(MPS2.Lambda[:,index]),[2],MPS2.Gamma[:,:,:,index],[1])
+        T2[:,:,:,:,:] = contract(conj(U1),[1],T,[2])#dim(D,d,D,D,D)
+        T[:,:,:,:] = PermutedDimsArray(contract(T2,[2,5],U2,[3,1]),(2,1,3,4)) #dim(D,D)
+    end
+
+    T[:,:,:,:] = contract(Diagonal(MPS1.Lambda[:,right+1]),[1],T,[2])#dim(D,D,D,D)
+    T[:,:,:,:] = contract(T,[4],Diagonal(MPS2.Lambda[:,right+1]),[1])#dim(1)
+
+    overlap = contract(T,[1,2,3,4],conj.(T),[1,2,3,4])[1]
 
     overlap = convert(Float64,overlap)
 
@@ -990,7 +1037,8 @@ function calculate_mutual_overlap!(MPS_list,cut_position::Vector{Int},values)
     for raw in 1:M
         values[raw,raw] = 0
         for column in raw+1:M
-            values[raw,column]= calculate_overlap(MPS_list[raw],MPS_list[column],cut_position)
+            println("calculate_overlap")
+            @time values[raw,column]= calculate_overlap(MPS_list[raw],MPS_list[column],cut_position)
             if values[raw,column]>1
                 println("overlap = ", values[raw,column])
             end
@@ -998,8 +1046,7 @@ function calculate_mutual_overlap!(MPS_list,cut_position::Vector{Int},values)
         end
     end
 
-    mutual_renyi = 2*sum(values) # a factor of two because we only calculated half of the matrix
-
+    mutual_renyi = sum(values)
     if isnan(mutual_renyi)
         println("there are NaN in mutual_renyi")
     end
