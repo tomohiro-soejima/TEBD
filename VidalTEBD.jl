@@ -894,6 +894,7 @@ function stochasticTEBD_multicopy(initial_MPS,Hamiltonian,number_of_copies,Time,
     for index in 1:number_of_copies
         MPS_list[index] = VidalMPS(deepcopy(initial_MPS.Gamma),deepcopy(initial_MPS.Lambda))
     end
+    values = zeros(Float64,number_of_copies,number_of_copies)
 
     eigs_squared_list = zeros(Float64,number_of_copies)
     eigs_squared = zeros(Float64,number_of_data_points+1)
@@ -905,7 +906,7 @@ function stochasticTEBD_multicopy(initial_MPS,Hamiltonian,number_of_copies,Time,
         end
 
         eigs_squared[iteration+1] = sum(eigs_squared_list)
-        mutual_overlap[iteration+1] = calculate_mutual_overlap(MPS_list,[left_cut,right_cut])
+        mutual_overlap[iteration+1] = calculate_mutual_overlap!(MPS_list,[left_cut,right_cut],values)
     end
 
     Renyi_entropy = -log.(1/number_of_copies^2 .*eigs_squared + 1/(number_of_copies^2).*mutual_overlap)
@@ -978,16 +979,22 @@ function calculate_overlap(MPS1,MPS2,cut_position::Vector{Int})
     return overlap
 
 end
-
-function calculate_mutual_overlap(MPS_list,cut_position::Vector{Int})
+"""
+receives a preallocated array dim(values) = (M,M)
+"""
+function calculate_mutual_overlap!(MPS_list,cut_position::Vector{Int},values)
     M = length(MPS_list)
-    values = zeros(Float64,M,M)
+    if (M,M) != size(values)
+        println("the preallocated array has a wrong size")
+    end
     for raw in 1:M
+        values[raw,raw] = 0
         for column in raw+1:M
             values[raw,column]= calculate_overlap(MPS_list[raw],MPS_list[column],cut_position)
             if values[raw,column]>1
                 println("overlap = ", values[raw,column])
             end
+            values[column,raw] = values[raw,column]
         end
     end
 
