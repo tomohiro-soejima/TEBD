@@ -7,24 +7,26 @@ This code implements the better version of the algorithm.
 Given a vector of N items with associated probability distribution Pi, return M items such that the probability for those M to be chosen is proportional to sum(Pi).
 Check a pdf by me for more detailed explanation.
 """
-function chooseN(Plist::Vector{Real},M::Int)
+function chooseN(Plist::Vector{<:Real},M::Int)
     if !(isproblist(Plist))
         println("The probability does not add up to 1")
     end
 
-    N = length(Plist)
+    L = length(Plist)
     #the following two sums are best explained in my pdf
     PI = 0 #sum of the probability of indices that was chosen
     PN = 0 #sum of the probability of indices that was not chosen
     I = 0 #number of items that was chosen
     N = 0 #number of items that was not chosen
     indices = Int64[]
-    for index in 1:length(Plist)
-        if ischosen(index,PI,PN)
+    for (index,prob) in enumerate(Plist)
+        if ischosen(index,prob,PI,PN,I,N,L,M)
             push!(indices,index)
-            PI += Plist[index]
+            PI += prob
+            I += 1
         else
-            PN += Plist[index]
+            PN += prob
+            N += 1
         end
 
         if length(indices) == M
@@ -39,8 +41,14 @@ function isproblist(List)
     return sum(List)≈1
 end
 
-function ischosen(index,PI,PN)
-    return true
+function ischosen(index,prob,PI,PN,I,N,L,M)
+    if L-I-N-1 == 0
+        P_index = float(M-I)
+    else
+        P_index = (M-I)/(L-I-N)*(PI+prob+(1-PI-PN-prob)*(M-I-1)/(L-I-N-1))/(PI+(1-PI-PN)*(M-I)/(L-I-N))
+    end
+    println(P_index)
+    return (rand()<P_index)
 end
 
 
