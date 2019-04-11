@@ -255,21 +255,20 @@ end
 
 function theta_ij(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
-    L1 = view(MPS.Lambda,:,loc)
-    L2 = view(MPS.Lambda,:,loc+1)
-    L3 = view(MPS.Lambda,:,loc+2)
-    Gamma1 = view(MPS.Gamma,:,:,:,loc)
-    Gamma2 = view(MPS.Gamma,:,:,:,loc+1)
-    S1 = zeros(Complex{Float64},d*D,D)
-    S2 = zeros(Complex{Float64},D,d*D)
-    for i in 1:d
-        S1[(i-1)*D+1:i*D,:] = Diagonal(L1)*view(Gamma1,:,:,i)*Diagonal(L2)
-    end
-    for j in 1:d
-        S2[:,(j-1)*D+1:j*D] = view(Gamma2,:,:,j)*Diagonal(L3)
-    end
-    theta = reshape(PermutedDimsArray(reshape(S1*S2,D,d,D,d),(2,4,1,3)),d^2,D^2)
-    A = reshape(PermutedDimsArray(reshape(U*theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
+    #look at the rank of each Lambda matrices
+    R1 = MPS.rank[loc]
+    R2 = MP2.rank[loc+1]
+    R3 = MPS.rank[loc+2]
+    #use the rank to get smaller L1, L2, L3
+    L1 = view(MPS.Lambda,1:R1,loc)
+    L2 = view(MPS.Lambda,1:R2,loc+1)
+    L3 = view(MPS.Lambda,1:R3,loc+2)
+    Gamma1 = view(MPS.Gamma,1:R1,1:R2,:,loc)
+    Gamma2 = view(MPS.Gamma,1:R2,1:R3,:,loc+1)
+    theta = Array{eltype(Gamma1),4}(undef, d,d, D, D)
+    @tensor theta[i, j, α, β] = L1[α,γ1]*G1[γ1,γ2,i]*L2[γ2,γ3]*G2[γ3,γ4,j]*L2[γ4,β]
+    theta[:,:] = U*reshape(theta,d^2,D^2)
+    A = reshape(PermutedDimsArray(reshape(theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
     return A
 end
 
@@ -277,40 +276,47 @@ end
 #TODO Improve this update algorithm by taking the rank of a schmidt vector seriously
 function updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     D,D2,d,N = size(MPS.Gamma)
-    L1 = view(MPS.Lambda,:,loc)
+    ϵ = eps(Float64)
+    R1 = MPS.rank[loc]
+    R2 = MP2.rank[loc+1]
+    R3 = MPS.rank[loc+2]
+    L1 = view(MPS.Lambda,1:R1,loc)
     L2 = view(MPS.Lambda,:,loc+1)
-    L3 = view(MPS.Lambda,:,loc+2)
+    L3 = view(MPS.Lambda,1:R3,loc+2)
     Gamma1 = view(MPS.Gamma,:,:,:,loc)
     Gamma2 = view(MPS.Gamma,:,:,:,loc+1)
     @views GL1 = PermutedDimsArray(reshape(F.U[:,1:D],D,d,D),(1,3,2))
     @views GL2 = reshape(F.Vt[1:D,:],D,D,d)
 
-    L1_inv = zero(L1)
-    for i in 1:D
-        if L1[i] > 10^-10
-            L1_inv[i] = 1/L1[i]
-        end
-    end
-    Gamma1[:,:,:] = contract(Diagonal(L1_inv),[2],GL1,[1])
-
     S = zeros(Float64,D)
     for i in 1:D
-        if F.S[i] > 10^-10
+        if F.S[i] > ϵ
             S[i] = F.S[i]
         else
             S[i] = 0 #somehow if I make this 10^-6 my code explods
+            R2 = i-1
+            break
         end
     end
     @views L2[:] = S[:]/sqrt(sum(S[:].^2))
+
+    L1_inv = zero(L1)
+    for i in 1:R1
+        L1_inv[i] = 1/L1[i]
+    end
+    Gamma1[:,:,:] = zero(Gamma1)
+    Gamma1[1:R1,1:R2,:] = contract(Diagonal(L1_inv),[2],GL1[1:R1,1:R2,:],[1])
+
     #@views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
     L3_inv = zero(L3)
-    for i in 1:D
-        if L3[i] >10^-10
-            L3_inv[i] = 1/L3[i]
-        end
+    for i in 1:R3
+        L3_inv[i] = 1/L3[i]
     end
-    Gamma2[:,:,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
+    Gamma2[:,:,:]= zero(Gamma2)
+    Gamma2[1:R2,1:R3,:]= permutedims(contract(GL2[1:R2,1:R3,:],[2],Diagonal(L3_inv),[1]),(1,3,2))
+    MPS.rank[loc] = R2
 end
+
 function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
     #initializing for different options
     operator != nothing ? expvalues = zeros(Complex{Float64},N+1,size(H.OneSite)[3]) : false
