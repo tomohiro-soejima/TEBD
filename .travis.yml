@@ -6,4 +6,4 @@ script:
   - julia -e 'using Pkg; Pkg.instantiate()'
   - ls
   - ls test
-  - julia '/test/runtests.jl'
+  - julia 'test/runtests.jl'
