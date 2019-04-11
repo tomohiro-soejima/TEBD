@@ -6,7 +6,7 @@ coveralls: true
 
 script:
   - julia -e 'using Pkg; Pkg.instantiate()'
-  - julia --code-coverage=user --inline=no 'test/runtests.jl'
+  - julia --code-coverage=user 'test/runtests.jl'
 
 after_success:
   - julia -e 'Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
