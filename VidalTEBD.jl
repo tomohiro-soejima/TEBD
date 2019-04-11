@@ -7,6 +7,7 @@ export contract
 using BenchmarkTools
 using LinearAlgebra
 using Random
+using TensorOperations
 
 GammaMat = Array{Complex{Float64},4}
 
@@ -48,6 +49,119 @@ struct MatrixProductOperator
     M1::Array{Complex{Float64},1} #dim = D
     M::Array{Complex{Float64},5} #dim = D,D,d,d,N
     Mend::Array{Complex{Float64},1} #dim = D
+end
+
+"""
+Tests whether a VidalMPS is normalized or not.
+"""
+function isnormalized(MPS::VidalMPS)
+    norm = calculate_norm(MPS)
+    return norm ≈ 1.0
+end
+
+
+"""
+Check if the VidalTEbD is leftorthogonal or not. Note that for VidalTEBD,
+the function does not need to be strictly left orthogonal. Instead, it needs
+to be an isometry, where the size of the projector is the same as the schmidt
+rank of the lambda matrix at the corresponding cut.
+"""
+function isleftorthogonal(MPS::VidalMPS, loc)
+    D,D2,d,N = size(MPS.Gamma)
+    T = get_leftoperator(MPS,loc)
+    if d^loc < D
+        R = d^loc
+        I_partial = zeros(Int64,D,D)
+        I_partial[1:R, 1:R] = Matrix{Int64}(I, R, R)
+    else
+        I_partial = Matrix{Int64}(I, D, D)
+    return T ≈ I_partial
+end
+
+"""
+Check if the VidalTEbD is rightorthogonal or not. Note that for VidalTEBD,
+the function does not need to be strictly right orthogonal. Instead, it needs
+to be an isometry, where the size of the projector is the same as the schmidt
+rank of the lambda matrix at the corresponding cut.
+"""
+function isrightorthogonal(MPS::VidalMPS, loc)
+    D,D2,d,N = size(MPS.Gamma)
+    T = get_rightoperator(MPS, N-loc)
+    if d^(N-loc) < D
+        R = d^(N-loc)
+        I_partial = zeros(Int64,D,D)
+        I_partial[1:R, 1:R] = Matrix{Int64}(I, R, R)
+    else
+        I_partial = Matrix{Int64}(I, D, D)
+    return T ≈ I_partial
+end
+
+function calculate_norm(MPS::VidalMPS)
+    D,D2,d,N = size(MPS.Gamma)
+    T = zeros(eltype(MPS.Gamma),D,D)
+    temp = zero(T)
+    @views Lambda = Diagonal(MPS.Lambda[:,1])
+    @views Gamma = MPS.Gamma[:,:,:,1]
+    A = zero(Gamma)
+    @tensor A[α,β,i] = Lambda[α,γ]*Gamma[γ,β,i]
+    @tensor T[α,β] = conj(A[γ,α,i])*A[γ,β,i]
+    for loc in 2:N
+        @views Lambda = Diagonal(MPS.Lambda[:,loc])
+        @views Gamma = MPS.Gamma[:,:,:,loc]
+        @tensor A[α,β,i] = Lambda[α,γ]*Gamma[γ,β,i]
+        @tensor temp[α, β] = T[γ, ρ]*conj(A[γ, α, i])*A[ρ, β, i]
+        T .= temp
+    end
+    @views Lambda = Array(Diagonal(MPS.Lambda[:, N+1]))
+    @tensor norm = T[α, β]*Lambda[α, γ]*Lambda[β, γ]
+    return norm
+end
+
+
+"""
+calculates the operator to left. Can be used to check if it is left orthogonal.
+n is the number of matrices to the left.
+"""
+function get_leftoperator(MPS::VidalMPS, n)
+    D,D2,d,N = size(MPS.Gamma)
+    T = zeros(eltype(MPS.Gamma),D,D)
+    temp = zero(T)
+    @views Lambda = Diagonal(MPS.Lambda[:,1])
+    @views Gamma = MPS.Gamma[:,:,:,1]
+    A = zero(Gamma)
+    @tensor A[α,β,i] = Lambda[α,γ]*Gamma[γ,β,i]
+    @tensor T[α,β] = conj(A[γ,α,i])*A[γ,β,i]
+    for loc in 2:n
+        @views Lambda = Diagonal(MPS.Lambda[:,loc])
+        @views Gamma = MPS.Gamma[:,:,:,loc]
+        @tensor A[α,β,i] = Lambda[α,γ]*Gamma[γ,β,i]
+        @tensor temp[α, β] = T[γ, ρ]*conj(A[γ, α, i])*A[ρ, β, i]
+        T .= temp
+    end
+    return T
+end
+
+"""
+calculates the operator to right. Can be used to check if it is right orthogonal.
+n is the number of matrices to the right.
+"""
+function get_rightoperator(MPS::VidalMPS, n)
+    D,D2,d,N = size(MPS.Gamma)
+    T = zeros(eltype(MPS.Gamma),D,D)
+    temp = zero(T)
+    @views Lambda = Diagonal(MPS.Lambda[:,N+1])
+    @views Gamma = MPS.Gamma[:,:,:,N]
+    A = zero(Gamma)
+    @tensor A[α,β,i] = Lambda[γ,β]*Gamma[α,γ,i]
+    @tensor T[α,β] = conj(A[α,γ,i])*A[β,γ,i]
+    for loc in N-1:(N-n+1)
+        @views Lambda = Diagonal(MPS.Lambda[:,loc+1])
+        @views Gamma = MPS.Gamma[:,:,:,loc]
+        @tensor A[α,β,i] = Lambda[γ,β]*Gamma[α,γ,i]
+        @tensor temp[α, β] = conj(A[α,γ,i])*A[β,ρ,i]*T[γ, ρ]
+        T .= temp
+    end
+    return T
 end
 
 function make_productVidalMPS(ProductState,D)
@@ -1058,6 +1172,8 @@ function calculate_mutual_overlap!(MPS_list,cut_position::Vector{Int},values)
 
     return mutual_renyi
 end
+
+include("./hamiltonian_constructor.jl")
 
 #this end is for the module
 end
