@@ -1,9 +1,13 @@
 language: julia
 julia:
   - 1.1
+codecov: true
+coveralls: true
 
 script:
   - julia -e 'using Pkg; Pkg.instantiate()'
-  - ls
-  - ls test
-  - julia 'test/runtests.jl'
+  - julia --code-coverage=user --inline=no 'test/runtests.jl'
+
+after_success:
+  - julia -e 'Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
+  - julia -e ' Codecov.submit(Codecov.process_folder())'
