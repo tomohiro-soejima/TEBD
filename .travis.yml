@@ -1,8 +1,8 @@
+codecov: true
+coveralls: true
 language: julia
 julia:
   - 1.1
-codecov: true
-coveralls: true
 
 script:
   - julia -e 'using Pkg; Pkg.instantiate()'
