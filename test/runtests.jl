@@ -12,6 +12,7 @@ using LinearAlgebra
     PS = zeros(Complex{Float64},d,N)
     PS[2,:] = ones(eltype(PS),N)
     MPS = VidalTEBD.make_productVidalMPS(PS,D)
+    @test VidalTEBD.iscorrectrank(MPS)
     @test VidalTEBD.isnormalized(MPS)
 
     #test normalization with complex numbers
@@ -20,6 +21,7 @@ using LinearAlgebra
     PS = zeros(Complex{Float64},2,N)
     PS[2,:] = im*ones(eltype(PS),N)
     MPS = VidalTEBD.make_productVidalMPS(PS,D)
+    @test VidalTEBD.iscorrectrank(MPS)
     @test VidalTEBD.isnormalized(MPS)
     @test VidalTEBD.isleftorthogonal(MPS, 10)
     @test VidalTEBD.isleftorthogonal(MPS, 2)
@@ -33,18 +35,19 @@ end
     hx = 0.5
     hz = 1.0
     T = pi
-    Nt = 5
+    Nt = 10
     PS = zeros(Complex{Float64},2,N)
     PS[2,:] = im*ones(eltype(PS),N)
     MPS = VidalTEBD.make_productVidalMPS(PS,D)
     H = VidalTEBD.make_TFIM_H(hx,hz,N)
     VidalTEBD.TEBD!(MPS, H, T, Nt)
+    @test VidalTEBD.iscorrectrank(MPS)
     @test VidalTEBD.isnormalized(MPS)
     @test VidalTEBD.isleftorthogonal(MPS, 10)
     @test VidalTEBD.isleftorthogonal(MPS, 2)
-    @test_broken VidalTEBD.isrightorthogonal(MPS, 9) #the numerical error is larger than the tolerance
+    @test VidalTEBD.isrightorthogonal(MPS, 9) #the numerical error is larger than the tolerance
     @test VidalTEBD.isrightorthogonal(MPS, 10)
-    @test_broken VidalTEBD.isrightorthogonal(MPS, 11) #the numerical error is larger than the tolerance
+    @test VidalTEBD.isrightorthogonal(MPS, 11) #the numerical error is larger than the tolerance
     @test VidalTEBD.isrightorthogonal(MPS, 18)
 
     D = 32
@@ -58,10 +61,11 @@ end
     MPS = VidalTEBD.make_productVidalMPS(PS,D)
     H = VidalTEBD.make_TFIM_H(hx,hz,N)
     VidalTEBD.TEBD!(MPS, H, T, Nt)
+    @test VidalTEBD.iscorrectrank(MPS)
     @test VidalTEBD.isnormalized(MPS)
-    @test_broken VidalTEBD.isleftorthogonal(MPS, 2)
-    @test_broken VidalTEBD.isleftorthogonal(MPS, 10)
-    @test_broken VidalTEBD.isrightorthogonal(MPS, 10)
+    @test VidalTEBD.isleftorthogonal(MPS, 2)
+    @test VidalTEBD.isleftorthogonal(MPS, 10)
+    @test VidalTEBD.isrightorthogonal(MPS, 10)
     @test VidalTEBD.isrightorthogonal(MPS, 18)
 
     D = 100
@@ -75,14 +79,14 @@ end
     MPS = VidalTEBD.make_productVidalMPS(PS,D)
     H = VidalTEBD.make_TFIM_H(hx,hz,N)
     VidalTEBD.TEBD!(MPS, H, T, Nt)
+    @test VidalTEBD.iscorrectrank(MPS)
     @test VidalTEBD.isnormalized(MPS)
-    @test_broken VidalTEBD.isleftorthogonal(MPS, 2)
-    @test_broken VidalTEBD.isleftorthogonal(MPS, 10)
-    @test_broken VidalTEBD.isrightorthogonal(MPS, 10)
+    @test VidalTEBD.isleftorthogonal(MPS, 2)
+    @test VidalTEBD.isleftorthogonal(MPS, 10)
+    @test VidalTEBD.isrightorthogonal(MPS, 10)
     @test VidalTEBD.isrightorthogonal(MPS, 18)
 end
 
 @testset "TEBD functionalities" begin
-
-
+    @test true
 end

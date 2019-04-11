@@ -71,7 +71,7 @@ function isleftorthogonal(MPS::VidalMPS, loc)
     D,D2,d,N = size(MPS.Gamma)
     T = get_leftoperator(MPS,loc)
     R = rank(Diagonal(MPS.Lambda[:,loc+1]))
-    R2 = rank(Diagonal(MPS.Lambda[:,loc+2]))
+    R2 = rank(Diagonal(MPS.Lambda[:,loc]))
     Rm = max(R,R2)
     if Rm < D
         I_partial = zeros(Int64,D,D)
@@ -80,7 +80,7 @@ function isleftorthogonal(MPS::VidalMPS, loc)
         I_partial = Matrix{Int64}(I, D, D)
     end
     println(norm(T-I_partial))
-    return T ≈ I_partial
+    return isapprox(T, I_partial, rtol = 10^-7)
 end
 
 """
@@ -103,7 +103,24 @@ function isrightorthogonal(MPS::VidalMPS, loc)
     end
     #@show diag(T)
     println("print the norm ", norm(T-I_partial))
-    return T ≈ I_partial
+    return isapprox(T, I_partial, rtol = 10^-7)
+end
+
+"""
+Check whether the rank attribute corresponds to the actual rank of the matrix
+"""
+function iscorrectrank(MPS::VidalMPS)
+    D, D2, d, N = size(MPS.Gamma)
+    for loc in 1:(N+1)
+        r = rank(Diagonal(MPS.Lambda[:,loc]))
+        if r != MPS.rank[loc]
+            println("loc = $loc")
+            println("r = $r")
+            println("rank = $(MPS.rank[loc])")
+            return false
+        end
+    end
+    return true
 end
 
 function calculate_norm(MPS::VidalMPS)
@@ -253,59 +270,62 @@ function twogate_onMPS!(MPS::VidalMPS,U,loc)
     updateMPSafter_twogate!(MPS,F,loc)
 end
 
+#TODO this algorithm is broken somewhere. Fix it.
 function theta_ij(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
     #look at the rank of each Lambda matrices
     R1 = MPS.rank[loc]
-    R2 = MP2.rank[loc+1]
+    R2 = MPS.rank[loc+1]
     R3 = MPS.rank[loc+2]
     #use the rank to get smaller L1, L2, L3
-    L1 = view(MPS.Lambda,1:R1,loc)
-    L2 = view(MPS.Lambda,1:R2,loc+1)
-    L3 = view(MPS.Lambda,1:R3,loc+2)
-    Gamma1 = view(MPS.Gamma,1:R1,1:R2,:,loc)
-    Gamma2 = view(MPS.Gamma,1:R2,1:R3,:,loc+1)
-    theta = Array{eltype(Gamma1),4}(undef, d,d, D, D)
-    @tensor theta[i, j, α, β] = L1[α,γ1]*G1[γ1,γ2,i]*L2[γ2,γ3]*G2[γ3,γ4,j]*L2[γ4,β]
-    theta[:,:] = U*reshape(theta,d^2,D^2)
-    A = reshape(PermutedDimsArray(reshape(theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
+    L1 = Diagonal(view(MPS.Lambda,1:R1,loc))
+    L2 = Diagonal(view(MPS.Lambda,1:R2,loc+1))
+    L3 = Diagonal(view(MPS.Lambda,1:R3,loc+2))
+    G1 = view(MPS.Gamma,1:R1,1:R2,:,loc)
+    G2 = view(MPS.Gamma,1:R2,1:R3,:,loc+1)
+    theta = Array{eltype(G1),4}(undef, d, d, R1, R3)
+    @tensor theta[i, j, α, β] = L1[α,γ1]*G1[γ1,γ2,i]*L2[γ2,γ3]*G2[γ3,γ4,j]*L3[γ4,β]
+    theta2 = U*reshape(theta,d^2,R1*R3)
+    A = reshape(PermutedDimsArray(reshape(theta2,d,d,R1,R3),(3,1,4,2)),(R1*d,R3*d))
     return A
 end
 
 
-#TODO Improve this update algorithm by taking the rank of a schmidt vector seriously
+#TODO This algorithm is broken. Fix it
 function updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     D,D2,d,N = size(MPS.Gamma)
-    ϵ = eps(Float64)
+    ϵ = 10^-10
     R1 = MPS.rank[loc]
-    R2 = MP2.rank[loc+1]
+    R2 = MPS.rank[loc+1]
     R3 = MPS.rank[loc+2]
     L1 = view(MPS.Lambda,1:R1,loc)
     L2 = view(MPS.Lambda,:,loc+1)
     L3 = view(MPS.Lambda,1:R3,loc+2)
     Gamma1 = view(MPS.Gamma,:,:,:,loc)
     Gamma2 = view(MPS.Gamma,:,:,:,loc+1)
-    @views GL1 = PermutedDimsArray(reshape(F.U[:,1:D],D,d,D),(1,3,2))
-    @views GL2 = reshape(F.Vt[1:D,:],D,D,d)
 
+    Rd = min(R1*d,R3*d,D)
     S = zeros(Float64,D)
-    for i in 1:D
+    for i in 1:Rd
         if F.S[i] > ϵ
             S[i] = F.S[i]
         else
             S[i] = 0 #somehow if I make this 10^-6 my code explods
-            R2 = i-1
             break
         end
     end
     @views L2[:] = S[:]/sqrt(sum(S[:].^2))
+    R2 = rank(Diagonal(L2))
+
+    @views GL1 = PermutedDimsArray(reshape(F.U[:,1:R2],R1,d,R2),(1,3,2))
+    @views GL2 = reshape(F.Vt[1:R2,:],R2,R3,d)
 
     L1_inv = zero(L1)
     for i in 1:R1
         L1_inv[i] = 1/L1[i]
     end
     Gamma1[:,:,:] = zero(Gamma1)
-    Gamma1[1:R1,1:R2,:] = contract(Diagonal(L1_inv),[2],GL1[1:R1,1:R2,:],[1])
+    Gamma1[1:R1,1:R2,:] = contract(Diagonal(L1_inv),[2],GL1,[1])
 
     #@views L2[:] = F.S[1:D]/sqrt(sum(F.S[1:D].^2))
     L3_inv = zero(L3)
@@ -313,8 +333,8 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
         L3_inv[i] = 1/L3[i]
     end
     Gamma2[:,:,:]= zero(Gamma2)
-    Gamma2[1:R2,1:R3,:]= permutedims(contract(GL2[1:R2,1:R3,:],[2],Diagonal(L3_inv),[1]),(1,3,2))
-    MPS.rank[loc] = R2
+    Gamma2[1:R2,1:R3,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
+    MPS.rank[loc+1] = R2 #TODO updating rank does not seem to be working.
 end
 
 function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
@@ -339,13 +359,8 @@ function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = n
     del = T/N
     U = makeNNQuadUnitary(H,del::Float64)
     for i in 1:N
-        try
-            update_oddsite!(MPS,U)
-            update_evensite!(MPS,U)
-        catch y
-            println("This happened after ",i," th time step")
-            error(y)
-        end
+        update_oddsite!(MPS,U)
+        update_evensite!(MPS,U)
 
         if operator != nothing
             for j in 1:N_site
