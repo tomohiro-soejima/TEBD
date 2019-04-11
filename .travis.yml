@@ -4,10 +4,4 @@ julia:
   - 1.1
 
 script:
-  - julia --code-coverage=user --inline=no test/runtests.jl
-
-codecov: true
-coveralls: true
-
-after_success:
-  - julia -E 'Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
+  - julia test/runtests.jl
