@@ -15,6 +15,7 @@ struct VidalMPS
     #MPS in Vidal canonical form
     Gamma::Array{Complex{Float64},4} #dim = D,D,d,N
     Lambda::Array{Float64,2} #dim = D,N
+    rank::Array{Int64,1}
 end
 struct OrthogonalMPS
     #MPS in Left orthogonal and right orthogonal form. The location of orthogonality center is specified.
@@ -69,12 +70,16 @@ rank of the lambda matrix at the corresponding cut.
 function isleftorthogonal(MPS::VidalMPS, loc)
     D,D2,d,N = size(MPS.Gamma)
     T = get_leftoperator(MPS,loc)
-    if d^loc < D
-        R = d^loc
+    R = rank(Diagonal(MPS.Lambda[:,loc+1]))
+    R2 = rank(Diagonal(MPS.Lambda[:,loc+2]))
+    Rm = max(R,R2)
+    if Rm < D
         I_partial = zeros(Int64,D,D)
-        I_partial[1:R, 1:R] = Matrix{Int64}(I, R, R)
+        I_partial[1:Rm, 1:Rm] = Matrix{Int64}(I, Rm, Rm)
     else
         I_partial = Matrix{Int64}(I, D, D)
+    end
+    println(norm(T-I_partial))
     return T ≈ I_partial
 end
 
@@ -87,12 +92,17 @@ rank of the lambda matrix at the corresponding cut.
 function isrightorthogonal(MPS::VidalMPS, loc)
     D,D2,d,N = size(MPS.Gamma)
     T = get_rightoperator(MPS, N-loc)
-    if d^(N-loc) < D
-        R = d^(N-loc)
+    R = rank(Diagonal(MPS.Lambda[:,loc+2]))
+    R2 = rank(Diagonal(MPS.Lambda[:,loc+1]))
+    Rm = max(R,R2)
+    if Rm < D
         I_partial = zeros(Int64,D,D)
-        I_partial[1:R, 1:R] = Matrix{Int64}(I, R, R)
+        I_partial[1:Rm, 1:Rm] = Matrix{Int64}(I, Rm, Rm)
     else
         I_partial = Matrix{Int64}(I, D, D)
+    end
+    #@show diag(T)
+    println("print the norm ", norm(T-I_partial))
     return T ≈ I_partial
 end
 
@@ -154,7 +164,7 @@ function get_rightoperator(MPS::VidalMPS, n)
     A = zero(Gamma)
     @tensor A[α,β,i] = Lambda[γ,β]*Gamma[α,γ,i]
     @tensor T[α,β] = conj(A[α,γ,i])*A[β,γ,i]
-    for loc in N-1:(N-n+1)
+    for loc in reverse((N-n+1):N-1)
         @views Lambda = Diagonal(MPS.Lambda[:,loc+1])
         @views Gamma = MPS.Gamma[:,:,:,loc]
         @tensor A[α,β,i] = Lambda[γ,β]*Gamma[α,γ,i]
@@ -169,9 +179,12 @@ function make_productVidalMPS(ProductState,D)
     Gamma = zeros(Complex{Float64},D,D,d,N)
     Lambda = zeros(Float64,D,N+1)
     Gamma[1,1,:,:] = ProductState
+    A = zeros(eltype(Gamma), d, d+1)
     Lambda[1,:] = ones(Float64,N+1)
-    VidalMPS(Gamma,Lambda)
+    rank = ones(Int64,N+1)
+    VidalMPS(Gamma, Lambda, rank)
 end
+
 function make_biggerMPS(MPS::VidalMPS,D_new)
     #enlarge the bond dimension
     #=Maybe it is better to append zeros to original lattice?
@@ -206,6 +219,7 @@ end
 function onesite_expvalue(MPS::VidalMPS,U,loc)
     onesite_expvalue2(MPS,U,loc)
 end
+
 function onesite_expvalue1(MPS::VidalMPS,U,loc)
     #not working yet!
     @views D,D2,d,N = size(MPS.Gamma)
@@ -220,6 +234,7 @@ function onesite_expvalue1(MPS::VidalMPS,U,loc)
     L = U*K
     sum(L .* conj.(K))
 end
+
 function onesite_expvalue2(MPS::VidalMPS,U,loc)
     @views D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
@@ -231,11 +246,13 @@ function onesite_expvalue2(MPS::VidalMPS,U,loc)
     L = U*K
     sum(L .* conj.(K))
 end
+
 function twogate_onMPS!(MPS::VidalMPS,U,loc)
     thetaNew = theta_ij(MPS,U,loc)
     F = LinearAlgebra.svd(copy(thetaNew))
     updateMPSafter_twogate!(MPS,F,loc)
 end
+
 function theta_ij(MPS::VidalMPS,U,loc)
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
@@ -255,6 +272,9 @@ function theta_ij(MPS::VidalMPS,U,loc)
     A = reshape(PermutedDimsArray(reshape(U*theta,d,d,D,D),(3,1,4,2)),(d*D,d*D))
     return A
 end
+
+
+#TODO Improve this update algorithm by taking the rank of a schmidt vector seriously
 function updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     D,D2,d,N = size(MPS.Gamma)
     L1 = view(MPS.Lambda,:,loc)
