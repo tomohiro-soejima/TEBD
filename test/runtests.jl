@@ -1,6 +1,6 @@
 using Test
 
-include("../VidalTEBD.jl")
+include("../src/VidalTEBD.jl")
 using .VidalTEBD
 using LinearAlgebra
 
