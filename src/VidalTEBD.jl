@@ -96,7 +96,7 @@ function isrightorthogonal(MPS::VidalMPS, loc)
     T = get_rightoperator(MPS, N-loc)
     R = rank(Diagonal(MPS.Lambda[:,loc+2]))
     R2 = rank(Diagonal(MPS.Lambda[:,loc+1]))
-    Rm = max(R,R2)
+    Rmax = max(R,R2)
     Rmin = min(R, R2)
     Rm = min(Rmin*d, Rmax)
     if Rm < D
