@@ -160,8 +160,7 @@ function get_leftoperator(MPS::VidalMPS, n)
     @views Lambda = Diagonal(MPS.Lambda[:,1])
     @views Gamma = MPS.Gamma[:,:,:,1]
     A = zero(Gamma)
-    @tensor A[α,β,i] = Lambda[α,γ]*Gamma[γ,β,i]
-    @tensor T[α,β] = conj(A[γ,α,i])*A[γ,β,i]
+    @tensor T[α,β] = Lambda[a, b] * Gamma[b, α, i] * Lambda[a, c] * conj(Gamma[c, β, i])
     for loc in 2:n
         @views Lambda = Diagonal(MPS.Lambda[:,loc])
         @views Gamma = MPS.Gamma[:,:,:,loc]
