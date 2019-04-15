@@ -293,8 +293,6 @@ function theta_ij(MPS::VidalMPS,U,loc)
     return A
 end
 
-
-#TODO This algorithm is broken. Fix it
 function updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     D,D2,d,N = size(MPS.Gamma)
     ϵ = 10^-10
@@ -337,7 +335,7 @@ function updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     end
     Gamma2[:,:,:]= zero(Gamma2)
     Gamma2[1:R2,1:R3,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
-    MPS.rank[loc+1] = R2 #TODO updating rank does not seem to be working.
+    MPS.rank[loc+1] = R2
 end
 
 function TEBD!(MPS::VidalMPS,H::NNQuadHamiltonian,T,N;operator = nothing, α = nothing,loc = nothing, MPO = nothing)
