@@ -45,14 +45,11 @@ function ischosen(index,prob,PI,PN,I,N,L,M)
     if L-I-N-1 == 0
         P_index = float(M-I)
     else
-        P_index = (M-I)/(L-I-N)*(PI+prob+(1-PI-PN-prob)*(M-I-1)/(L-I-N-1))/(PI+(1-PI-PN)*(M-I)/(L-I-N))
+        P_index = prob_chosen(prob, PI,PN,I,N,L,M)
     end
-    println(P_index)
     return (rand()<P_index)
 end
 
-
-Plist = 0.1*ones(10)
-M = 5
-a = chooseN(Plist,M)
-println(a)
+function prob_chosen(prob, PI, PN, I, N, L, M)
+    (M-I)/(L-I-N)*(PI+prob+(1-PI-PN-prob)*(M-I-1)/(L-I-N-1))/(PI+(1-PI-PN)*(M-I)/(L-I-N))
+end

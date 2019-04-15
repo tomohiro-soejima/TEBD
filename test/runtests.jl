@@ -86,6 +86,4 @@ end
     @test VidalTEBD.isrightorthogonal(MPS, 18)
 end
 
-@testset "TEBD functionalities" begin
-    @test true
-end
+include("./stochastic.jl")

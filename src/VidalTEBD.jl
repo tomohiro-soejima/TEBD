@@ -1015,35 +1015,7 @@ function stochastic_updateMPSafter_twogate!(MPS::VidalMPS,F::SVD,loc)
     Gamma2[:,:,:]= permutedims(contract(GL2,[2],Diagonal(L3_inv),[1]),(1,3,2))
 end
 
-function chooseN(list::Array{Float64,1},N::Int64)
-    a = copy(list)
-    b = Array{Int64,1}(undef,N)
-    index_list = collect(1:length(list))
-    for i in 1:N
-        bi = choose1(a)
-        if sum(a) == sum(list)
-            error("Something went wrong")
-        end
-        b[i] = index_list[bi]
-        filter!(!isequal(b[i]),index_list)
-    end
-    return b
-end
-
-function choose1(list::Array{Float64,1})
-    p = rand(Float64)
-    for i in 1:length(list)
-        if p < sum(list[1:i])/sum(list)
-            deleteat!(list,i)
-            return i
-        end
-    end
-
-    #if everthing is zero, choose a value randomly
-    i = ceil(Int64,p*length(list))
-    deleteat!(list,i)
-    return i
-end
+include("./improved_chooseN.jl")
 
 function stochasticTEBD_multicopy(initial_MPS,Hamiltonian,number_of_copies,Time,Nt,number_of_data_points,cut_position)
     MPS_list = Array{VidalMPS,1}(undef,number_of_copies)
